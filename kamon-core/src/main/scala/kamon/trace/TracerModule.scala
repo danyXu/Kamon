@@ -103,7 +103,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   private val _incubator = new LazyActorRef
 
   private def newToken: String =
-    _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet())
+    _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet()) + "-" + NanoTimestamp.now.nanos
 
   def newContext(name: String): TraceContext =
     createTraceContext(name, None)

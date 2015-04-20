@@ -28,7 +28,6 @@ object Projects extends Build {
     .settings(formatSettings: _*)
     .settings(noPublishing: _*)
 
-
   lazy val kamonCore: Project = Project("kamon-core", file("kamon-core"))
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
@@ -40,7 +39,6 @@ object Projects extends Build {
         provided(aspectJ) ++
         optional(logback) ++
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
-
 
   lazy val kamonAkka = Project("kamon-akka", file("kamon-akka"))
     .dependsOn(kamonCore % "compile->compile;test->test")
@@ -54,7 +52,6 @@ object Projects extends Build {
           provided(aspectJ) ++
           optional(logback) ++
           test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
-
 
   lazy val kamonScala = Project("kamon-scala", file("kamon-scala"))
     .dependsOn(kamonCore % "compile->compile;test->test")
@@ -79,7 +76,6 @@ object Projects extends Build {
         provided(aspectJ) ++
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
-
   lazy val kamonSpray = Project("kamon-spray", file("kamon-spray"))
     .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka, kamonTestkit % "test")
     .settings(basicSettings: _*)
@@ -96,12 +92,12 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(sprayCan, sprayClient, sprayRouting, sprayJson, sprayJsonLenses, newrelic, akkaSlf4j) ++
         provided(aspectJ) ++
         test(scalatest, akkaTestKit, sprayTestkit, slf4Api, akkaSlf4j))
-
 
   lazy val kamonPlayground = Project("kamon-playground", file("kamon-playground"))
     .dependsOn(kamonSpray, kamonNewrelic, kamonStatsD, kamonDatadog, kamonLogReporter, kamonSystemMetrics)
@@ -113,15 +109,14 @@ object Projects extends Build {
       libraryDependencies ++=
         compile(akkaActor, akkaSlf4j, sprayCan, sprayClient, sprayRouting, logback))
 
-
   lazy val kamonDashboard = Project("kamon-dashboard", file("kamon-dashboard"))
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaSlf4j, sprayRouting, sprayCan, sprayJson))
-
 
   lazy val kamonTestkit = Project("kamon-testkit", file("kamon-testkit"))
     .dependsOn(kamonCore)
@@ -138,6 +133,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(play, playWS) ++
@@ -148,6 +144,7 @@ object Projects extends Build {
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -157,27 +154,28 @@ object Projects extends Build {
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
         test(scalatest, akkaTestKit, slf4Api, slf4nop))
-
 
   lazy val kamonLogReporter = Project("kamon-log-reporter", file("kamon-log-reporter"))
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
         test(scalatest, akkaTestKit, slf4Api, slf4nop))
-
 
   lazy val kamonSystemMetrics = Project("kamon-system-metrics", file("kamon-system-metrics"))
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(fork in Test :=  true)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(sigarLoader) ++
@@ -188,16 +186,18 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         test(h2,scalatest, akkaTestKit, slf4Api) ++
         provided(aspectJ))
-
+  
   lazy val kamonAnnotation = Project("kamon-annotation", file("kamon-annotation"))
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(el) ++
