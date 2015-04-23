@@ -8,11 +8,13 @@ import kamon.trace.Tracer
 class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
   "the Kamon Zipkin module" should {
+
     "not do anything if there is no TraceContext when an actor receive a message" in {
       val zipkinActor = system.actorOf(ZipkinActors.props())
       zipkinActor ! Tracer.currentContext.token
       expectMsg("no child")
     }
+
     "create a new TraceContext child if an actor receive a message into a TraceContext" in {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val token = Tracer.currentContext.token
@@ -21,6 +23,7 @@ class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentatio
         expectMsg("child")
       }
     }
+
     "handle hierarchy by giving parentToken to each child" in {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val rootToken = Tracer.currentContext.token
@@ -29,6 +32,7 @@ class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentatio
         expectMsg(rootToken)
       }
     }
+
     "handle hierarchy by giving the same rootToken to each actor" in {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val rootToken = Tracer.currentContext.token
@@ -37,6 +41,7 @@ class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentatio
         expectMsg(rootToken)
       }
     }
+
     "log method executions in classes with EnableZipkin annotation" in {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val hello = new TestAnnotation

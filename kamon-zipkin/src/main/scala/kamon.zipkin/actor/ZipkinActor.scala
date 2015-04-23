@@ -4,25 +4,37 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 
 import akka.actor.{ ActorRef, Actor }
-import akka.event.Logging
 import com.github.levkhomich.akka.tracing.thrift
 import kamon.akka.remote.RemoteConfig
 import kamon.trace.{ SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
+import tv.teads.gaia.logging.LazyLogging
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class ZipkinActor(spansSubmitter: ActorRef) extends Actor {
+class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
   private val marker = "EndpointWriter"
   var parentActor = false
 
-  val traceZipkin = TrieMap[String, TrieMap[String, Span]]()
-  val traceClass = TrieMap[String, TrieMap[String, String]]()
-  val traceParent = TrieMap[String, TrieMap[String, String]]()
+  /*
+   * Associate to each token corresponding span
+   * (rootToken -> (token -> span))
+   */
+  val traceSpan = TrieMap.empty[String, TrieMap[String, Span]]
+  /*
+   * Associate to each instance corresponding token
+   * (rootToken -> (instance -> token))
+   */
+  val traceInstance = TrieMap.empty[String, TrieMap[String, String]]
+  /*
+   * Associate to each token corresponding real parentToken
+   * (rootToken -> (token -> realParentToken))
+   */
+  val traceParent = TrieMap.empty[String, TrieMap[String, String]]
 
   def receive = {
     case trace: TraceInfo ⇒
@@ -30,38 +42,47 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor {
       val parentToken = trace.metadata.getOrElse(RemoteConfig.parentToken, "")
 
       // Instantiate TrieMap for this rootToken if it wasn't done before
-      if (!traceClass.contains(rootToken)) traceClass += (rootToken -> TrieMap[String, String]())
+      if (!traceInstance.contains(rootToken)) traceInstance += (rootToken -> TrieMap[String, String]())
       if (!traceParent.contains(rootToken)) traceParent += (rootToken -> TrieMap[String, String]())
 
       // Create span of this TraceInfo and add it to the TrieMap
       val span = traceInfoToSpans(trace)
-      if (traceZipkin.contains(rootToken)) traceZipkin += (rootToken -> (traceZipkin(rootToken) += (trace.token -> span)))
-      else traceZipkin += (rootToken -> TrieMap(trace.token -> span))
+      if (traceSpan.contains(rootToken)) traceSpan += (rootToken -> (traceSpan(rootToken) += (trace.token -> span)))
+      else traceSpan += (rootToken -> TrieMap(trace.token -> span))
 
-      // Check if this TraceInfo is part of an already existing span
-      val c = trace.metadata.getOrElse(ZipkinConfig.spanUniqueClass, "")
-      if (traceClass(rootToken).contains(c) && traceZipkin(rootToken).contains(traceClass(rootToken)(c))) {
-        traceZipkin(rootToken)(traceClass(rootToken)(c)).addToRecords(ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-          new NanoTimestamp(trace.timestamp.nanos))
-        traceZipkin(rootToken)(traceClass(rootToken)(c)).addToRecords(ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-          new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
-        traceZipkin(rootToken)(traceClass(rootToken)(c)).addSegments(trace.segments)
-        traceZipkin(rootToken) -= trace.token
-        traceParent(rootToken) += (trace.token -> traceClass(rootToken)(c))
-      } else {
-        traceClass(rootToken) += (c -> trace.token)
-      }
+      checkUnicity(trace, rootToken)
 
       // Dirty param to know if this actor is the local which started to work on the request
       if (!parentActor && parentToken == rootToken) parentActor = true
       // Send spans periodically to Zipkin
       if (trace.token == rootToken || (!parentActor && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == marker)) {
-        spansSubmitter ! new SpanBlock(traceZipkin(rootToken).map(_._2.simpleSpan))
+        spansSubmitter ! new SpanBlock(traceSpan(rootToken).map(_._2.simpleSpan))
 
-        traceZipkin -= rootToken
-        traceClass -= rootToken
+        traceSpan -= rootToken
+        traceInstance -= rootToken
         traceParent -= rootToken
       }
+  }
+
+  // Check if this instance is part of an already existing span
+  private def checkUnicity(trace: TraceInfo, rootToken: String) = {
+    val instance = trace.metadata.getOrElse(ZipkinConfig.spanUniqueClass, "")
+    if (traceInstance(rootToken).contains(instance) && traceSpan(rootToken).contains(traceInstance(rootToken)(instance))) {
+      val realParentToken = traceInstance(rootToken)(instance)
+      traceSpan(rootToken)(realParentToken).addToRecords(
+        ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+        new NanoTimestamp(trace.timestamp.nanos))
+      traceSpan(rootToken)(realParentToken).addToRecords(
+        ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+        new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
+
+      traceSpan(rootToken)(realParentToken).addSegments(trace.segments)
+
+      traceSpan(rootToken) -= trace.token
+      traceParent(rootToken) += (trace.token -> realParentToken)
+    } else {
+      traceInstance(rootToken) += (instance -> trace.token)
+    }
   }
 
   private def traceInfoToSpans(trace: TraceInfo): Span = {
@@ -115,9 +136,9 @@ object TimestampConverter {
 
 case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, start: Long, duration: Long,
     annotations: mutable.Map[String, String], parentSpanId: Long = 0, endpoint: thrift.Endpoint = Endpoint.createApplicationEndpoint("zipkin"),
-    isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) {
+    isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) extends LazyLogging {
 
-  val otherSegments = ListBuffer[SegmentInfo]()
+  val otherSegments = ListBuffer.empty[SegmentInfo]
 
   def simpleSpan = {
     var maxTimestamp = start + duration
@@ -129,12 +150,12 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     span.set_parent_id(parentSpanId)
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
-    trace.segments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp)) }
-    otherSegments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp)) }
+    trace.segments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime)) }
+    otherSegments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime)) }
     records.foreach {
       case (k, v) ⇒
         if (TimestampConverter.timestampToMicros(v) > maxTimestamp) maxTimestamp = TimestampConverter.timestampToMicros(v)
-        span.add_to_annotations(timestampAnnotation(k, v))
+        span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
         if (k.startsWith(ZipkinConfig.segmentBegin)) fullName += " - " + k.stripPrefix(ZipkinConfig.segmentBegin)
     }
 
@@ -166,7 +187,7 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
 
   def addToAnnotations(key: String, value: String) = annotations += (key -> value)
   def addToRecords(key: String, value: NanoTimestamp) = records += (key -> value)
-  def addSegments(newSegments: List[SegmentInfo]) = otherSegments :+ newSegments
+  def addSegments(newSegments: List[SegmentInfo]) = otherSegments ++= newSegments
 
   private def stringAnnotation(key: String, value: String) = {
     val a = new thrift.BinaryAnnotation()
@@ -176,10 +197,11 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     a
   }
 
-  private def timestampAnnotation(key: String, value: NanoTimestamp) = {
+  private def timestampAnnotation(key: String, value: NanoTimestamp, elapsedTime: NanoInterval) = {
     val a = new thrift.Annotation()
     a.set_value(key)
     a.set_timestamp(TimestampConverter.timestampToMicros(value))
+    if (elapsedTime != NanoInterval.default) a.set_duration(TimestampConverter.durationToMicros(elapsedTime).toInt)
     a
   }
 }

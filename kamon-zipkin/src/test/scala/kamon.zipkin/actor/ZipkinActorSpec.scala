@@ -1,7 +1,7 @@
 package kamon.zipkin.actor
+
 import java.net.InetAddress
 import java.nio.ByteBuffer
-
 import akka.actor.Props
 import akka.testkit.{ TestActorRef, TestProbe }
 import kamon.akka.remote.RemoteConfig
@@ -16,6 +16,7 @@ import scala.collection.mutable
 class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
   "the Kamon Zipkin module" should {
+
     "create an Endpoint correctly" in new EndpointFixture {
       val e = new thrift.Endpoint()
       e.set_service_name(service)
@@ -24,6 +25,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
       e should be(endpoint)
     }
+
     "create a Span correctly" in new SpanFixture {
       val s = new thrift.Span()
       s.set_trace_id(0L)
