@@ -16,11 +16,10 @@
 
 package kamon.trace
 
-import java.util.concurrent.TimeUnit
 import kamon.util.ConfigTools.Syntax
 import com.typesafe.config.Config
 
-case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler)
+case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String)
 
 object TraceSettings {
   def apply(config: Config): TraceSettings = {
@@ -41,6 +40,8 @@ object TraceSettings {
         case "threshold" ⇒ new ThresholdSampler(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)
       }
 
-    TraceSettings(detailLevel, sampler)
+    val token: String = tracerConfig.getString("token-name")
+
+    TraceSettings(detailLevel, sampler, token)
   }
 }

@@ -22,7 +22,7 @@ object Publish {
     crossPaths := true,
     pomExtra := kamonPomExtra,
     publishTo := kamonRepo,
-    organization := "io.kamon",
+    organization := "com.github.elyrixia",
     pomIncludeRepository := { x => false },
     publishMavenStyle := true,
     publishArtifact in Test := false

@@ -20,6 +20,7 @@ import java.io.ObjectStreamException
 import kamon.trace.TraceContextAware.DefaultTraceContextAware
 import kamon.util.{ SameThreadExecutionContext, Supplier, Function, RelativeNanoTimestamp }
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 
 trait TraceContext {
@@ -29,6 +30,7 @@ trait TraceContext {
   def nonEmpty: Boolean = !isEmpty
   def isOpen: Boolean
   def isClosed: Boolean = !isOpen
+  def metadata: TrieMap[String, String]
 
   def finish(): Unit
   def rename(newName: String): Unit
@@ -85,6 +87,7 @@ case object EmptyTraceContext extends TraceContext {
   def token: String = ""
   def isEmpty: Boolean = true
   def isOpen: Boolean = false
+  def metadata = TrieMap.empty[String, String]
 
   def finish(): Unit = {}
   def rename(name: String): Unit = {}
