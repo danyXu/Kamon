@@ -23,7 +23,7 @@ object Projects extends Build {
 
   lazy val kamon = Project("kamon", file("."))
     .aggregate(kamonCore, kamonScala, kamonAkka, kamonSpray, kamonNewrelic, kamonPlayground, kamonTestkit,
-      kamonPlay, kamonStatsD, kamonDatadog, kamonSystemMetrics, kamonLogReporter, kamonAkkaRemote, kamonJdbc, kamonAnnotation)
+      kamonPlay, kamonStatsD, kamonDatadog, kamonSystemMetrics, kamonLogReporter, kamonAkkaRemote, kamonJdbc, kamonAnnotation, kamonZipkin)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(noPublishing: _*)
@@ -192,6 +192,17 @@ object Projects extends Build {
     .settings(
       libraryDependencies ++=
         compile(el) ++
+          test(scalatest, akkaTestKit, slf4Api) ++
+          provided(aspectJ))
+
+  lazy val kamonZipkin = Project("kamon-zipkin", file("kamon-zipkin"))
+    .dependsOn(kamonCore % "compile->compile;test->test", kamonAkkaRemote)
+    .settings(basicSettings: _*)
+    .settings(formatSettings: _*)
+    .settings(aspectJSettings: _*)
+    .settings(
+      libraryDependencies ++=
+        compile(akkaActor, akkaTracing) ++
           test(scalatest, akkaTestKit, slf4Api) ++
           provided(aspectJ))
 

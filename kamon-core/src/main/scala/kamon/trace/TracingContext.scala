@@ -21,11 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.event.LoggingAdapter
 import kamon.util.{ NanoInterval, RelativeNanoTimestamp, NanoTimestamp }
-import kamon.metric.MetricsModule
 
 import scala.collection.concurrent.TrieMap
 
-private[trace] class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfDetail: LevelOfDetail,
+class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfDetail: LevelOfDetail,
   isLocal: Boolean, startTimeztamp: RelativeNanoTimestamp, log: LoggingAdapter, traceInfoSink: TracingContext ⇒ Unit)
     extends MetricsOnlyContext(traceName, token, izOpen, levelOfDetail, startTimeztamp, log) {
 
@@ -35,6 +34,7 @@ private[trace] class TracingContext(traceName: String, token: String, izOpen: Bo
   private val _metadata = TrieMap.empty[String, String]
 
   override def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
+  override def metadata: TrieMap[String, String] = _metadata
 
   override def startSegment(segmentName: String, category: String, library: String): Segment = {
     _openSegments.incrementAndGet()

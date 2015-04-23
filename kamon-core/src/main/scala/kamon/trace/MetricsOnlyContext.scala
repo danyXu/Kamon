@@ -24,6 +24,7 @@ import kamon.metric.{ SegmentMetrics, MetricsModule, TraceMetrics }
 import kamon.util.{ NanoInterval, RelativeNanoTimestamp }
 
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 
 private[kamon] class MetricsOnlyContext(traceName: String, val token: String, izOpen: Boolean, val levelOfDetail: LevelOfDetail,
   val startTimestamp: RelativeNanoTimestamp, log: LoggingAdapter)
@@ -35,6 +36,7 @@ private[kamon] class MetricsOnlyContext(traceName: String, val token: String, iz
 
   private val _finishedSegments = new ConcurrentLinkedQueue[SegmentLatencyData]()
   private val _traceLocalStorage = new TraceLocalStorage
+  private val _metadata = TrieMap.empty[String, String]
 
   def rename(newName: String): Unit =
     if (isOpen)
@@ -45,7 +47,8 @@ private[kamon] class MetricsOnlyContext(traceName: String, val token: String, iz
   def name: String = _name
   def isEmpty: Boolean = false
   def isOpen: Boolean = _isOpen
-  def addMetadata(key: String, value: String): Unit = {}
+  def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
+  def metadata: TrieMap[String, String] = _metadata
 
   def finish(): Unit = {
     _isOpen = false

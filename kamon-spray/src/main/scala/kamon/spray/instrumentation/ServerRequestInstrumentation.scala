@@ -83,7 +83,7 @@ class ServerRequestInstrumentation {
 
       } else pjp.proceed
 
-      Tracer.currentContext.finish()
+      storedContext.finish()
 
       recordHttpServerMetrics(response, incomingContext.name, sprayExtension)
 

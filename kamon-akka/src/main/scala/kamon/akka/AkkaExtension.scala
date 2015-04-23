@@ -24,6 +24,7 @@ import kamon._
 
 class AkkaExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   val log = Logging(system, classOf[AkkaExtension])
+  log.info("Starting the Kamon(Akka) extension")
   val config = system.settings.config.getConfig("kamon.akka")
 
   val askPatternTimeoutWarning = AskPatternTimeoutWarningSettings.fromConfig(config)

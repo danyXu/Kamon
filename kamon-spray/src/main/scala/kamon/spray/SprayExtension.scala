@@ -44,6 +44,7 @@ trait SprayExtension extends Kamon.Extension {
 class SprayExtensionImpl(system: ExtendedActorSystem) extends SprayExtension {
   val settings = SprayExtensionSettings(system)
   val log = Logging(system, "SprayExtension")
+  log.info("Starting the Kamon(Spray) extension")
 
   val httpServerMetrics = {
     val entity = Entity("spray-server", HttpServerMetrics.category)
