@@ -18,7 +18,6 @@ import sbt.Keys._
 import com.typesafe.sbt.SbtAspectj.{ Aspectj, defaultAspectjSettings }
 import com.typesafe.sbt.SbtAspectj.AspectjKeys.{ aspectjVersion, compileOnly, lintProperties, weaverOptions }
 
-
 object AspectJ {
 
   lazy val aspectJSettings = inConfig(Aspectj)(defaultAspectjSettings) ++ aspectjDependencySettings ++ Seq(

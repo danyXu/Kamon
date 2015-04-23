@@ -1,0 +1,18 @@
+<!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
+
+<aspectj>
+    <aspects>
+        <concrete-aspect name="kamon.zipkin.instrumentation.CustomZipkinInstrumentation" extends="kamon.zipkin.instrumentation.EnableZipkinInstrumentation">
+            <pointcut name="optionalZipkinPointcut" expression="execution(* *.helloZipkinExplicit(..))" />
+        </concrete-aspect>
+    </aspects>
+    <weaver>
+        <include within="*" />
+
+        <!--  exclude some commons packages -->
+        <exclude within="org..*" />
+        <exclude within="ch.qos.logback..*" />
+        <exclude within="com.google..*"/>
+        <exclude within="*..*CGLIB*" />
+    </weaver>
+</aspectj>

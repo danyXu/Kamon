@@ -2665,9 +2665,9 @@ public final class TraceContextAwareWireFormats {
       public Builder setTraceToken(
           java.lang.String value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000002;
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000002;
         traceToken_ = value;
         onChanged();
         return this;

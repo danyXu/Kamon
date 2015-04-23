@@ -2,14 +2,19 @@
 
 <aspectj>
     <aspects>
-        <aspect name="kamon.zipkin.instrumentation.BaseZipkinInstrumentation"/>
+        <aspect name="kamon.zipkin.instrumentation.BaseZipkinInstrumentation" />
+        <aspect name="kamon.zipkin.instrumentation.EnableZipkinInstrumentation" />
     </aspects>
-    <weaver options="-warn:none">
+    <weaver>
+        <include within="*" />
+
+        <!-- exclude some actors -->
+        <exclude within="akka.event..*" />
+        <exclude within="kamon.zipkin.actor..*" />
+
         <!--  exclude some commons packages -->
-        <exclude within="org.apache.commons..*"/>
-        <exclude within="org.apache.log4j..*"/>
-        <exclude within="org.hibernate..*"/>
-        <exclude within="org.springframework..*"/>
+        <exclude within="org..*" />
+        <exclude within="ch.qos.logback..*" />
         <exclude within="com.google..*"/>
         <exclude within="*..*CGLIB*" />
     </weaver>

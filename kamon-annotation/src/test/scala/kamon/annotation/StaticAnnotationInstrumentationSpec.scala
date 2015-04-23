@@ -17,7 +17,6 @@
 package kamon.annotation
 
 import com.typesafe.config.ConfigFactory
-import kamon.metric.{ HistogramKey, MinMaxCounterKey, CounterKey }
 import kamon.testkit.BaseKamonSpec
 
 class StaticAnnotationInstrumentationSpec extends BaseKamonSpec("static-annotation-instrumentation-spec") {

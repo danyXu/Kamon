@@ -84,3 +84,8 @@ class DefaultNameGenerator extends NameGenerator {
     request.header[Host].map(_.host)
 
 }
+
+class RequestNameGenerator extends DefaultNameGenerator {
+  override def generateTraceName(request: HttpRequest): String =
+    request.method.value + ": " + request.uri.path
+}

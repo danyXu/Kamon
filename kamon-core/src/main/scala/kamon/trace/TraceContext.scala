@@ -30,7 +30,8 @@ trait TraceContext {
   def nonEmpty: Boolean = !isEmpty
   def isOpen: Boolean
   def isClosed: Boolean = !isOpen
-  def metadata: TrieMap[String, String]
+  def metadata: Map[String, String]
+  def levelOfDetail: LevelOfDetail
 
   def finish(): Unit
   def rename(newName: String): Unit
@@ -87,7 +88,8 @@ case object EmptyTraceContext extends TraceContext {
   def token: String = ""
   def isEmpty: Boolean = true
   def isOpen: Boolean = false
-  def metadata = TrieMap.empty[String, String]
+  def metadata = Map.empty[String, String]
+  def levelOfDetail: LevelOfDetail = LevelOfDetail.MetricsOnly
 
   def finish(): Unit = {}
   def rename(name: String): Unit = {}
@@ -167,4 +169,15 @@ trait SegmentAware {
 object SegmentAware {
   def default: SegmentAware = new DefaultSegmentAware
   class DefaultSegmentAware extends DefaultTraceContextAware with SegmentAware {}
+}
+
+object HierarchyConfig {
+  val internalPrefix = "internal."
+  val tokenSeparator = "::"
+
+  val rootToken = internalPrefix + "rootToken"
+  val parentToken = internalPrefix + "parentToken"
+  val spanUniqueClass = internalPrefix + "spanUniqueClass"
+
+  val future = internalPrefix + "future"
 }

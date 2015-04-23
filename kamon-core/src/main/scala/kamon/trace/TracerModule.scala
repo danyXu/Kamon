@@ -20,6 +20,7 @@ import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor._
+import akka.event.{ LoggingAdapter, Logging }
 import com.typesafe.config.Config
 import kamon.Kamon
 import kamon.metric.MetricsModule
@@ -31,6 +32,8 @@ trait TracerModule {
   def newContext(name: String): TraceContext
   def newContext(name: String, token: Option[String]): TraceContext
   def newContext(name: String, token: Option[String], timestamp: RelativeNanoTimestamp, isOpen: Boolean, isLocal: Boolean): TraceContext
+  def newChildContext(name: String): TraceContext
+  def newChildContext(name: String, token: Option[String]): TraceContext
 
   def subscribe(subscriber: ActorRef): Unit
   def unsubscribe(subscriber: ActorRef): Unit
@@ -103,10 +106,15 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   private val _incubator = new LazyActorRef
 
   private def newToken: String =
-    _settings.token + _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet()) + NanoTimestamp.now.nanos
+    _settings.levelOfDetail match {
+      case LevelOfDetail.MetricsOnly ⇒
+        _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet())
+      case _ ⇒
+        _settings.token + _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet()) + NanoTimestamp.now.nanos
+    }
 
   def newContext(name: String): TraceContext =
-    createTraceContext(name, None)
+    createTraceContext(name)
 
   def newContext(name: String, token: Option[String]): TraceContext =
     createTraceContext(name, token)
@@ -114,21 +122,27 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   def newContext(name: String, token: Option[String], timestamp: RelativeNanoTimestamp, isOpen: Boolean, isLocal: Boolean): TraceContext =
     createTraceContext(name, token, timestamp, isOpen, isLocal)
 
-  private def createTraceContext(traceName: String, token: Option[String], startTimestamp: RelativeNanoTimestamp = RelativeNanoTimestamp.now,
-    isOpen: Boolean = true, isLocal: Boolean = true): TraceContext = {
+  def newChildContext(name: String): TraceContext =
+    createTraceContext(name, isChild = true)
+
+  def newChildContext(name: String, token: Option[String]): TraceContext =
+    createTraceContext(name, token, isChild = true)
+
+  private def createTraceContext(traceName: String, token: Option[String] = None, startTimestamp: RelativeNanoTimestamp = RelativeNanoTimestamp.now,
+    isOpen: Boolean = true, isLocal: Boolean = true, isChild: Boolean = false): TraceContext = {
 
     def newMetricsOnlyContext(token: String): TraceContext =
-      new MetricsOnlyContext(traceName, token, isOpen, _settings.levelOfDetail, startTimestamp, null)
+      new MetricsOnlyContext(traceName, token, isOpen, LevelOfDetail.MetricsOnly, startTimestamp, _logger)
 
     val traceToken = token.getOrElse(newToken)
 
-    if (_settings.levelOfDetail == LevelOfDetail.MetricsOnly || !isLocal)
-      newMetricsOnlyContext(traceToken)
-    else {
-      if ((traceName.startsWith("GET") || traceName.startsWith("POST")) && !_settings.sampler.shouldTrace)
+    _settings.levelOfDetail match {
+      case LevelOfDetail.MetricsOnly ⇒
         newMetricsOnlyContext(traceToken)
-      else
-        new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
+      case _ if (isLocal && !isChild && !_settings.sampler.shouldTrace) || (!isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1) ⇒
+        newMetricsOnlyContext(traceToken)
+      case _ ⇒
+        new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, _logger, dispatchTracingContext(isLocal))
     }
   }
 
@@ -138,17 +152,17 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   def unsubscribe(subscriber: ActorRef): Unit =
     _subscriptions.tell(TraceSubscriptions.Unsubscribe(subscriber))
 
-  private[kamon] def dispatchTracingContext(trace: TracingContext): Unit =
-    if (_settings.sampler.shouldReport(trace.elapsedTime))
-      if (trace.shouldIncubate)
-        _incubator.tell(trace)
-      else
-        _subscriptions.tell(trace.generateTraceInfo)
+  private[kamon] def dispatchTracingContext(isLocal: Boolean = true)(trace: TracingContext): Unit =
+    if (!isLocal || trace.metadata.contains(HierarchyConfig.parentToken) || _settings.sampler.shouldReport(trace.elapsedTime)) {
+      if (trace.shouldIncubate) _incubator.tell(trace)
+      else _subscriptions.tell(trace.generateTraceInfo)
+    }
 
   /**
    *  Tracer Extension initialization.
    */
   private var _system: ActorSystem = null
+  private var _logger: LoggingAdapter = null
   private lazy val _start = {
     val subscriptions = _system.actorOf(Props[TraceSubscriptions], "trace-subscriptions")
     _subscriptions.point(subscriptions)
@@ -157,6 +171,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
 
   def start(system: ActorSystem): Unit = synchronized {
     _system = system
+    _logger = Logging(_system, "TracerModule")
     _start
     _system = null
   }

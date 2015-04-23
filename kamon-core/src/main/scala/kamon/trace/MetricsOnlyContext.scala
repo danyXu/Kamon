@@ -41,14 +41,14 @@ private[kamon] class MetricsOnlyContext(traceName: String, val token: String, iz
   def rename(newName: String): Unit =
     if (isOpen)
       _name = newName
-    else if (log.isWarningEnabled)
+    else
       log.warning("Can't rename trace from [{}] to [{}] because the trace is already closed.", name, newName)
 
   def name: String = _name
   def isEmpty: Boolean = false
   def isOpen: Boolean = _isOpen
-  def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
-  def metadata: TrieMap[String, String] = _metadata
+  override def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
+  override def metadata: Map[String, String] = _metadata.toMap
 
   def finish(): Unit = {
     _isOpen = false
@@ -104,7 +104,7 @@ private[kamon] class MetricsOnlyContext(traceName: String, val token: String, iz
     def rename(newName: String): Unit =
       if (isOpen)
         _segmentName = newName
-      else if (log.isWarningEnabled)
+      else
         log.warning("Can't rename segment from [{}] to [{}] because the segment is already closed.", name, newName)
 
     def finish: Unit = {
