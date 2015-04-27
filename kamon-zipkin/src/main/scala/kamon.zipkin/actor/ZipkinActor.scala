@@ -5,8 +5,7 @@ import java.nio.ByteBuffer
 
 import akka.actor.{ ActorRef, Actor }
 import com.github.levkhomich.akka.tracing.thrift
-import kamon.akka.remote.RemoteConfig
-import kamon.trace.{ SegmentInfo, TraceInfo }
+import kamon.trace.{ HierarchyConfig, SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
 import tv.teads.gaia.logging.LazyLogging
@@ -38,8 +37,8 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
   def receive = {
     case trace: TraceInfo ⇒
-      val rootToken = trace.metadata.getOrElse(RemoteConfig.rootToken, "")
-      val parentToken = trace.metadata.getOrElse(RemoteConfig.parentToken, "")
+      val rootToken = trace.metadata.getOrElse(HierarchyConfig.rootToken, "")
+      val parentToken = trace.metadata.getOrElse(HierarchyConfig.parentToken, "")
 
       // Instantiate TrieMap for this rootToken if it wasn't done before
       if (!traceInstance.contains(rootToken)) traceInstance += (rootToken -> TrieMap[String, String]())
@@ -86,8 +85,8 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
   }
 
   private def traceInfoToSpans(trace: TraceInfo): Span = {
-    val rootToken = trace.metadata.getOrElse(RemoteConfig.rootToken, "")
-    var parentToken = trace.metadata.getOrElse(RemoteConfig.parentToken, "")
+    val rootToken = trace.metadata.getOrElse(HierarchyConfig.rootToken, "")
+    var parentToken = trace.metadata.getOrElse(HierarchyConfig.parentToken, "")
     if (traceParent(rootToken).contains(parentToken)) parentToken = traceParent(rootToken)(parentToken)
     val token = trace.token
 
@@ -150,8 +149,12 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     span.set_parent_id(parentSpanId)
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
-    trace.segments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime)) }
-    otherSegments.foreach { segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime)) }
+    trace.segments.filter(s ⇒ filterSegments(s)).foreach {
+      segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime))
+    }
+    otherSegments.filter(s ⇒ filterSegments(s)).foreach {
+      segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime))
+    }
     records.foreach {
       case (k, v) ⇒
         if (TimestampConverter.timestampToMicros(v) > maxTimestamp) maxTimestamp = TimestampConverter.timestampToMicros(v)
@@ -201,8 +204,14 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     val a = new thrift.Annotation()
     a.set_value(key)
     a.set_timestamp(TimestampConverter.timestampToMicros(value))
-    if (elapsedTime != NanoInterval.default) a.set_duration(TimestampConverter.durationToMicros(elapsedTime).toInt)
+    val duration = TimestampConverter.durationToMicros(elapsedTime).toInt
+    if (duration > 100) a.set_duration(duration)
     a
+  }
+
+  private def filterSegments(s: SegmentInfo): Boolean = {
+    val duration = TimestampConverter.durationToMicros(s.elapsedTime).toInt
+    duration == 0 || duration > 100
   }
 }
 

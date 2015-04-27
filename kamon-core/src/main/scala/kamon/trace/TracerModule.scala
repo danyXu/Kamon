@@ -125,7 +125,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     if (_settings.levelOfDetail == LevelOfDetail.MetricsOnly || !isLocal)
       newMetricsOnlyContext(traceToken)
     else {
-      if ((traceName.startsWith("GET") || traceName.startsWith("POST")) && !_settings.sampler.shouldTrace)
+      if (_settings.sampleFilter.foldLeft(false)(_ || traceName.startsWith(_)) && !_settings.sampler.shouldTrace)
         newMetricsOnlyContext(traceToken)
       else
         new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)

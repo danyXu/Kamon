@@ -6,8 +6,7 @@ import akka.remote.{ RemoteActorRefProvider, Ack, SeqNo }
 import akka.remote.WireFormats._
 import akka.util.ByteString
 import kamon.Kamon
-import kamon.akka.remote.RemoteConfig
-import kamon.trace.{ Tracer, TraceContext }
+import kamon.trace.{ HierarchyConfig, Tracer }
 import kamon.util.MilliTimestamp
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation._
@@ -37,8 +36,8 @@ class RemotingInstrumentation {
     Tracer.currentContext.collect { context ⇒
 
       var token = context.token
-      val rootToken = context.metadata.getOrElse(RemoteConfig.rootToken, "")
-      if (!rootToken.isEmpty) token = rootToken + RemoteConfig.tokenSeparator + token
+      val rootToken = context.metadata.getOrElse(HierarchyConfig.rootToken, "")
+      if (!rootToken.isEmpty) token = rootToken + HierarchyConfig.tokenSeparator + token
 
       envelopeBuilder.setTraceContext(RemoteTraceContext.newBuilder()
         .setTraceName(context.name)

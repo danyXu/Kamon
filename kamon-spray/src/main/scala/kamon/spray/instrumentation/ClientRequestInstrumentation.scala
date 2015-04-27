@@ -144,7 +144,7 @@ class ClientRequestInstrumentation {
       else
         defaultHeaders
 
-    } getOrElse (defaultHeaders)
+    } getOrElse defaultHeaders
 
     pjp.proceed(Array[AnyRef](request, modifiedHeaders))
   }

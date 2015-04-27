@@ -4,10 +4,9 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 import akka.actor.Props
 import akka.testkit.{ TestActorRef, TestProbe }
-import kamon.akka.remote.RemoteConfig
 import kamon.testkit.BaseKamonSpec
 import com.github.levkhomich.akka.tracing.thrift
-import kamon.trace.{ SegmentInfo, TraceInfo }
+import kamon.trace.{ HierarchyConfig, SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
 
@@ -63,7 +62,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       prob.watch(zipkinActor)
 
       val trace = TraceInfo("", "root", NanoTimestamp.now, NanoInterval.default,
-        Map[String, String](RemoteConfig.rootToken -> "root", RemoteConfig.parentToken -> "root"), List[SegmentInfo]())
+        Map[String, String](HierarchyConfig.rootToken -> "root", HierarchyConfig.parentToken -> "root"), List[SegmentInfo]())
       zipkinActor ! trace
 
       prob.expectMsgType[SpanBlock]

@@ -18,8 +18,9 @@ package kamon.trace
 
 import kamon.util.ConfigTools.Syntax
 import com.typesafe.config.Config
+import scala.collection.JavaConverters._
 
-case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String)
+case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String, sampleFilter: List[String])
 
 object TraceSettings {
   def apply(config: Config): TraceSettings = {
@@ -42,6 +43,8 @@ object TraceSettings {
 
     val token: String = tracerConfig.getString("token-name")
 
-    TraceSettings(detailLevel, sampler, token)
+    val sampleFilter: List[String] = tracerConfig.getStringList("sample-filter").asScala.toList
+
+    TraceSettings(detailLevel, sampler, token, sampleFilter)
   }
 }

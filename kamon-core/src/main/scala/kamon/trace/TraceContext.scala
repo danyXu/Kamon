@@ -168,3 +168,10 @@ object SegmentAware {
   def default: SegmentAware = new DefaultSegmentAware
   class DefaultSegmentAware extends DefaultTraceContextAware with SegmentAware {}
 }
+
+object HierarchyConfig {
+  val rootToken = "rootToken"
+  val parentToken = "parentToken"
+
+  val tokenSeparator = "::"
+}

@@ -99,8 +99,10 @@ class ServerRequestInstrumentation {
       Kamon(Spray).log.warning(text)
 
     if (incomingTraceContext.nonEmpty) {
-      if (incomingTraceContext.token != storedTraceContext.token)
-        publishWarning(s"Different trace token found when trying to close a trace, original: [${storedTraceContext.token}] - incoming: [${incomingTraceContext.token}]")
+      if (incomingTraceContext.token != storedTraceContext.token) {
+        if (incomingTraceContext.metadata.getOrElse(HierarchyConfig.rootToken, "inc") != storedTraceContext.metadata.getOrElse(HierarchyConfig.rootToken, "stored"))
+          publishWarning(s"Different trace token found when trying to close a trace, original: [${storedTraceContext.token}] - incoming: [${incomingTraceContext.token}]")
+      }
     } else
       publishWarning(s"EmptyTraceContext present while closing the trace with token [${storedTraceContext.token}]")
   }

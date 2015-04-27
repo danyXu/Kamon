@@ -1,11 +1,20 @@
 package kamon.zipkin.instrumentation
 
 import akka.actor.{ ActorRef, Actor, Props }
-import kamon.akka.remote.RemoteConfig
+import com.typesafe.config.ConfigFactory
 import kamon.testkit.BaseKamonSpec
-import kamon.trace.Tracer
+import kamon.trace.{ HierarchyConfig, Tracer }
 
 class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
+
+  override lazy val config =
+    ConfigFactory.parseString(
+      """
+        |kamon.trace {
+        |  level-of-detail = simple-trace
+        |  sampling = all
+        |}
+      """.stripMargin)
 
   "the Kamon Zipkin module" should {
 
@@ -70,14 +79,14 @@ class ZipkinActorHierarchy2(sender: ActorRef) extends Actor {
   def receive = {
     case s: String ⇒
       val ctx = Tracer.currentContext
-      sender ! ctx.metadata.getOrElse(RemoteConfig.rootToken, "no rootToken")
+      sender ! ctx.metadata.getOrElse(HierarchyConfig.rootToken, "no rootToken")
   }
 }
 class ZipkinActorChild() extends Actor {
   def receive = {
     case s: String ⇒
       val ctx = Tracer.currentContext
-      sender ! ctx.metadata.getOrElse(RemoteConfig.parentToken, "no parentToken")
+      sender ! ctx.metadata.getOrElse(HierarchyConfig.parentToken, "no parentToken")
   }
 }
 

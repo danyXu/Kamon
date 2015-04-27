@@ -30,7 +30,6 @@ class ZipkinExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   val log = Logging(system, classOf[ZipkinExtension])
   log.info(s"Starting the Kamon(Zipkin) extension")
 
-  val config = system.settings.config.getConfig("kamon.zipkin")
   val trace = TracingExtension(system)
 
   val spansSubmitter = system.actorOf(Props(new SpanSubmitter(trace)))
