@@ -7,6 +7,6 @@ object ZipkinConfig {
   val spanType = internalPrefix + "type"
   val spanUniqueClass = internalPrefix + "uniqueClass"
 
-  val segmentBegin = "BEGIN - "
-  val segmentEnd = "END - "
+  val segmentBegin = "BEGIN>"
+  val segmentEnd = "END>"
 }

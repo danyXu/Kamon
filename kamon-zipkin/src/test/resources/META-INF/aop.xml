@@ -1,0 +1,13 @@
+<!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
+
+<aspectj>
+    <weaver options="-warn:none">
+        <include within="*" />
+
+        <!--  exclude some commons packages -->
+        <exclude within="org..*" />
+        <exclude within="ch.qos.logback..*" />
+        <exclude within="com.google..*"/>
+        <exclude within="*..*CGLIB*" />
+    </weaver>
+</aspectj>

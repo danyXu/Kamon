@@ -8,7 +8,7 @@ import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{ Around, Pointcut, Aspect }
 
 @Aspect
-class BaseZipkinInstrumentation {
+abstract class BaseZipkinInstrumentation {
 
   @Pointcut(value = "execution(* akka.actor.Actor.aroundReceive(..)) && (!within(kamon..*) || within(kamon.zipkin.instrumentation..*)) && args(receive,msg)", argNames = "receive,msg")
   def aroundReceivePointcut(receive: Actor.Receive, msg: Any) {}
