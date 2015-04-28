@@ -29,7 +29,7 @@ object Projects extends Build {
     .settings(noPublishing: _*)
 
 
-  lazy val kamonCore: Project = Project("kamon-core", file("kamon-core"))
+  lazy val kamonCore: Project = Project("kamon-core-teads", file("kamon-core"))
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
@@ -48,6 +48,7 @@ object Projects extends Build {
     .settings(basicSettings: _* )
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -61,6 +62,7 @@ object Projects extends Build {
     .settings(basicSettings: _* )
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile() ++
@@ -68,7 +70,7 @@ object Projects extends Build {
         optional(scalazConcurrent) ++
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
-  lazy val kamonAkkaRemote = Project("kamon-akka-remote", file("kamon-akka-remote"))
+  lazy val kamonAkkaRemote = Project("kamon-akka-remote-teads", file("kamon-akka-remote"))
     .dependsOn(kamonAkka)
     .settings(basicSettings: _* )
     .settings(formatSettings: _*)
@@ -80,7 +82,7 @@ object Projects extends Build {
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
 
-  lazy val kamonSpray = Project("kamon-spray", file("kamon-spray"))
+  lazy val kamonSpray = Project("kamon-spray-teads", file("kamon-spray"))
     .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka, kamonTestkit % "test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
@@ -96,6 +98,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(sprayCan, sprayClient, sprayRouting, sprayJson, sprayJsonLenses, newrelic, akkaSlf4j) ++
@@ -109,15 +112,16 @@ object Projects extends Build {
     .settings(formatSettings: _*)
     .settings(noPublishing: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaSlf4j, sprayCan, sprayClient, sprayRouting, logback))
-
-
+  
   lazy val kamonTestkit = Project("kamon-testkit", file("kamon-testkit"))
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaTestKit) ++
@@ -129,6 +133,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(play, playWS) ++
@@ -139,6 +144,7 @@ object Projects extends Build {
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -148,6 +154,7 @@ object Projects extends Build {
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -158,6 +165,7 @@ object Projects extends Build {
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -169,6 +177,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(fork in Test :=  true)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(sigarLoader) ++
@@ -179,6 +188,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         test(h2,scalatest, akkaTestKit, slf4Api) ++
@@ -189,6 +199,7 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
+    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(el) ++

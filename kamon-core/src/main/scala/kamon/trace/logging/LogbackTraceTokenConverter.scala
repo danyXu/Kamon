@@ -22,5 +22,5 @@ import kamon.trace.Tracer
 class LogbackTraceTokenConverter extends ClassicConverter {
 
   def convert(event: ILoggingEvent): String =
-    Tracer.currentContext.collect(_.token).getOrElse("undefined")
+    Tracer.currentContext.collect(_.token).getOrElse("NoTraceContext")
 }
