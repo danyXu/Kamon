@@ -9,4 +9,6 @@ object ZipkinConfig {
 
   val segmentBegin = "BEGIN> "
   val segmentEnd = "END> "
+
+  val recordMinDuration = 100
 }

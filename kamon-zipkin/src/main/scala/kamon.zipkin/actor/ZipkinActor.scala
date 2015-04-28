@@ -86,15 +86,15 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
   private def traceInfoToSpans(trace: TraceInfo): Span = {
     val rootToken = trace.metadata.getOrElse(HierarchyConfig.rootToken, "")
-    var parentToken = trace.metadata.getOrElse(HierarchyConfig.parentToken, "")
-    if (traceParent(rootToken).contains(parentToken)) parentToken = traceParent(rootToken)(parentToken)
+    val parentToken = traceParent(rootToken).getOrElse(parentToken, trace.metadata.getOrElse(HierarchyConfig.parentToken, ""))
     val token = trace.token
 
     val traceId = longHash(rootToken)
     val rootSpanId = longHash(token)
     val parentSpanId = longHash(parentToken)
 
-    val cleanMetaData = mutable.Map(trace.metadata.filterKeys(k ⇒ !k.startsWith(ZipkinConfig.internalPrefix)).toSeq: _*)
+    val cleanMetaData = mutable.Map(trace.metadata
+      .filterKeys(k ⇒ !k.startsWith(ZipkinConfig.internalPrefix) && k != HierarchyConfig.rootToken && k != HierarchyConfig.parentToken).toSeq: _*)
     val endpoint = Endpoint.createApplicationEndpoint(trace.metadata.getOrElse(ZipkinConfig.spanClass, "Request"))
 
     Span(trace, traceId, rootSpanId, trace.name, TimestampConverter.timestampToMicros(trace.timestamp),
@@ -205,13 +205,13 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     a.set_value(key)
     a.set_timestamp(TimestampConverter.timestampToMicros(value))
     val duration = TimestampConverter.durationToMicros(elapsedTime).toInt
-    if (duration > 100) a.set_duration(duration)
+    if (duration > ZipkinConfig.recordMinDuration) a.set_duration(duration)
     a
   }
 
   private def filterSegments(s: SegmentInfo): Boolean = {
     val duration = TimestampConverter.durationToMicros(s.elapsedTime).toInt
-    duration == 0 || duration > 100
+    duration == 0 || duration > ZipkinConfig.recordMinDuration
   }
 }
 
