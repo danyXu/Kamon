@@ -7,15 +7,6 @@ import kamon.trace.{ HierarchyConfig, Tracer }
 
 class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
-  override lazy val config =
-    ConfigFactory.parseString(
-      """
-        |kamon.trace {
-        |  level-of-detail = simple-trace
-        |  sampling = all
-        |}
-      """.stripMargin)
-
   "the Kamon Zipkin module" should {
 
     "not do anything if there is no TraceContext when an actor receive a message" in {

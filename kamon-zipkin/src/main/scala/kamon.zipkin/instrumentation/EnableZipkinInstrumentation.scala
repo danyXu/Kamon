@@ -7,7 +7,7 @@ import org.aspectj.lang.annotation.{ Aspect, Pointcut, Around }
 @Aspect
 abstract class EnableZipkinInstrumentation {
 
-  @Pointcut("execution((* || Any) *(..)) && !execution((* || Any) akka..*(..)) && !execution((* || Any) scala..*(..)) && within(@kamon.zipkin.instrumentation.EnableZipkin *)")
+  @Pointcut("execution(* *(..)) && !execution(* akka..*(..)) && !execution(* scala..*(..)) && within(@kamon.zipkin.instrumentation.EnableZipkin *)")
   def enableZipkinPointcut() = {}
 
   /**

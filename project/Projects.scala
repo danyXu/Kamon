@@ -42,13 +42,12 @@ object Projects extends Build {
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
 
-  lazy val kamonAkka = Project("kamon-akka", file("kamon-akka"))
+  lazy val kamonAkka = Project("kamon-akka-teads", file("kamon-akka"))
     .dependsOn(kamonCore % "compile->compile;test->test")
     .dependsOn(kamonScala)
     .settings(basicSettings: _* )
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
-    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor) ++
@@ -57,12 +56,11 @@ object Projects extends Build {
           test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
 
-  lazy val kamonScala = Project("kamon-scala", file("kamon-scala"))
+  lazy val kamonScala = Project("kamon-scala-teads", file("kamon-scala"))
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _* )
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
-    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile() ++
@@ -121,7 +119,6 @@ object Projects extends Build {
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
-    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaTestKit) ++
@@ -206,7 +203,7 @@ object Projects extends Build {
           test(scalatest, akkaTestKit, slf4Api) ++
           provided(aspectJ))
 
-  lazy val kamonZipkin = Project("kamon-zipkin", file("kamon-zipkin"))
+  lazy val kamonZipkin = Project("kamon-zipkin-teads", file("kamon-zipkin"))
     .dependsOn(kamonCore % "compile->compile;test->test")
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
