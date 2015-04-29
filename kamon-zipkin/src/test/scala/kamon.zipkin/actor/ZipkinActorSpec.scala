@@ -14,9 +14,9 @@ import scala.collection.mutable
 
 class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
-  "the Kamon Zipkin module" should {
+  "the actor of zipkin" should {
 
-    "create an Endpoint correctly" in new EndpointFixture {
+    "create an Endpoint correctly" in new EndpointTest {
       val e = new thrift.Endpoint()
       e.set_service_name(service)
       e.set_ipv4(ByteBuffer.wrap(InetAddress.getByName(host).getAddress).getInt)
@@ -25,7 +25,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       e should be(endpoint)
     }
 
-    "create a Span correctly" in new SpanFixture {
+    "create a Span correctly" in new SpanTest {
       val s = new thrift.Span()
       s.set_trace_id(0L)
       s.set_name(spanName)
@@ -56,9 +56,9 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       s should be(span)
     }
 
-    "return a SpanBlock when the TraceInfo concerns the rootToken" in {
+    "return a SpanBlock when the TraceInfo concerns the rootToken" in new ConfigTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref)))
+      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config)))
       prob.watch(zipkinActor)
 
       val trace = TraceInfo("", "root", NanoTimestamp.now, NanoInterval.default,
@@ -68,9 +68,9 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       prob.expectMsgType[SpanBlock]
     }
 
-    "not return anything when the TraceInfo doesn't concern the rootToken" in new TraceInfoFixture {
+    "not return anything when the TraceInfo doesn't concern the rootToken" in new TraceInfoTest with ConfigTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref)))
+      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config)))
       prob.watch(zipkinActor)
 
       zipkinActor ! trace
@@ -79,7 +79,11 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
     }
   }
 
-  trait EndpointFixture {
+  trait ConfigTest {
+    val config = new ZipkinConfig(system.settings.config.getConfig("kamon.zipkin"))
+  }
+
+  trait EndpointTest {
     val service = "test"
     val host = "localhost"
     val port = 8000
@@ -87,7 +91,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
     val endpoint = Endpoint.createEndpoint(service, host, port)
   }
 
-  trait TraceInfoFixture {
+  trait TraceInfoTest {
     val traceName = "traceName"
     val traceToken = "traceToken"
     val traceStart = NanoTimestamp.now
@@ -98,7 +102,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
     val trace = TraceInfo(traceName, traceToken, traceStart, traceDuration, metadata, segments)
   }
 
-  trait SpanFixture extends TraceInfoFixture with EndpointFixture {
+  trait SpanTest extends TraceInfoTest with EndpointTest {
     val traceId = 0L
     val spanId = 0L
     val parentSpanId = 0L

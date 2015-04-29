@@ -204,14 +204,14 @@ object Projects extends Build {
           provided(aspectJ))
 
   lazy val kamonZipkin = Project("kamon-zipkin", file("kamon-zipkin"))
-    .dependsOn(kamonCore % "compile->compile;test->test")
+    .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaTracing) ++
-          test(scalatest, akkaTestKit, slf4Api) ++
+          test(scalatest, akkaTestKit) ++
           provided(aspectJ))
 
   val noPublishing = Seq(publish := (), publishLocal := (), publishArtifact := false)

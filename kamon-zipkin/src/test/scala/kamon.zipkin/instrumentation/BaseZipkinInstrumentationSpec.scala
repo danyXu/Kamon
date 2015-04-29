@@ -2,95 +2,80 @@ package kamon.zipkin.instrumentation
 
 import akka.actor.{ ActorRef, Actor, Props }
 import com.typesafe.config.ConfigFactory
+import kamon.Kamon
 import kamon.testkit.BaseKamonSpec
-import kamon.trace.{ HierarchyConfig, Tracer }
+import kamon.trace.{ TraceInfo, HierarchyConfig, Tracer }
 
-class BaseZipkinInstrumentationSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
+class BaseZipkinInstrumentationSpec extends BaseKamonSpec("base-zipkin-instrumentation-spec") {
 
-  "the Kamon Zipkin module" should {
+  "the base instrumentation of zipkin" should {
 
-    "not do anything if there is no TraceContext when an actor receive a message" in {
-      val zipkinActor = system.actorOf(ZipkinActors.props())
+    "not do anything if there is no TraceContext when an actor receive a message" in new ZipkinActorFixture {
       zipkinActor ! Tracer.currentContext.token
-      expectMsg("no child")
+      expectMsg("no context")
     }
 
-    "create a new TraceContext child if an actor receive a message into a TraceContext" in {
+    "create a new TraceContext child if an actor receive a message into a TraceContext" in new ZipkinActorFixture {
       Tracer.withContext(newContext("testKamonZipkin")) {
-        val token = Tracer.currentContext.token
-        val zipkinActor = system.actorOf(ZipkinActors.props())
-        zipkinActor ! token
+        zipkinActor ! Tracer.currentContext.token
         expectMsg("child")
       }
     }
 
-    "handle hierarchy by giving parentToken to each child" in {
+    "handle hierarchy by giving parentToken to each child" in new ZipkinChildFixture {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val rootToken = Tracer.currentContext.token
-        val zipkinActor = system.actorOf(ZipkinActors.propsChild())
-        zipkinActor ! rootToken
+        zipkinChild ! rootToken
         expectMsg(rootToken)
       }
     }
 
-    "handle hierarchy by giving the same rootToken to each actor" in {
+    "handle hierarchy by giving the same rootToken to each actor" in new ZipkinHierarchyFixture {
       Tracer.withContext(newContext("testKamonZipkin")) {
         val rootToken = Tracer.currentContext.token
-        val zipkinActor = system.actorOf(ZipkinActors.propsHierarchy())
-        zipkinActor ! rootToken
+        zipkinHierarchy ! rootToken
         expectMsg(rootToken)
       }
     }
 
-    "log method executions in classes with EnableZipkin annotation" in {
-      Tracer.withContext(newContext("testKamonZipkin")) {
-        val hello = new TestAnnotation
-        hello.hello() should be("hello")
-      }
-    }
+  }
+
+  trait ZipkinActorFixture {
+    val zipkinActor = system.actorOf(Props[ZipkinActor])
+  }
+
+  trait ZipkinChildFixture {
+    val zipkinChild = system.actorOf(Props[ZipkinChild])
+  }
+
+  trait ZipkinHierarchyFixture {
+    val zipkinHierarchy = system.actorOf(Props[ZipkinHierarchy])
   }
 }
 
 class ZipkinActor() extends Actor {
   def receive = {
-    case s: String ⇒
-      val child = Tracer.currentContext
-      if (s != Tracer.currentContext.token) sender ! "child"
+    case token: String ⇒
+      if (Tracer.currentContext.isEmpty) sender ! "no context"
+      else if (token != Tracer.currentContext.token) sender ! "child"
       else sender ! "no child"
   }
 }
-class ZipkinActorHierarchy() extends Actor {
+class ZipkinChild() extends Actor {
+  def receive = {
+    case s: String ⇒ sender ! Tracer.currentContext.metadata.getOrElse(HierarchyConfig.parentToken, "no parentToken")
+  }
+}
+
+class ZipkinHierarchy() extends Actor {
   def receive = {
     case s: String ⇒
-      val childActor = context.actorOf(ZipkinActors.propsHierarchy2(sender()))
+      val childActor = context.actorOf(Props(classOf[ZipkinHierarchyFollow], sender()))
       childActor ! Tracer.currentContext.token
   }
 }
-class ZipkinActorHierarchy2(sender: ActorRef) extends Actor {
+class ZipkinHierarchyFollow(sender: ActorRef) extends Actor {
   def receive = {
-    case s: String ⇒
-      val ctx = Tracer.currentContext
-      sender ! ctx.metadata.getOrElse(HierarchyConfig.rootToken, "no rootToken")
-  }
-}
-class ZipkinActorChild() extends Actor {
-  def receive = {
-    case s: String ⇒
-      val ctx = Tracer.currentContext
-      sender ! ctx.metadata.getOrElse(HierarchyConfig.parentToken, "no parentToken")
-  }
-}
-
-object ZipkinActors {
-  def props(): Props = Props(classOf[ZipkinActor])
-  def propsHierarchy(): Props = Props(classOf[ZipkinActorHierarchy])
-  def propsHierarchy2(sender: ActorRef): Props = Props(classOf[ZipkinActorHierarchy2], sender)
-  def propsChild(): Props = Props(classOf[ZipkinActorChild])
-}
-
-@EnableZipkin
-class TestAnnotation {
-  def hello(): String = {
-    "hello"
+    case s: String ⇒ sender ! Tracer.currentContext.metadata.getOrElse(HierarchyConfig.rootToken, "no rootToken")
   }
 }

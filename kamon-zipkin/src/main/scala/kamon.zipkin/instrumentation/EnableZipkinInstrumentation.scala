@@ -27,7 +27,7 @@ abstract class EnableZipkinInstrumentation {
    * <aspectj>
    */
   @Pointcut()
-  def optionalZipkinPointcut()
+  def optionalZipkinPointcut() = {}
 
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
   def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any = {

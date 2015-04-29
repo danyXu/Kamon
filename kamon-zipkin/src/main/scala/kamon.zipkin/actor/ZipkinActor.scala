@@ -8,15 +8,13 @@ import com.github.levkhomich.akka.tracing.thrift
 import kamon.trace.{ HierarchyConfig, SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
-import tv.teads.gaia.logging.LazyLogging
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
+class ZipkinActor(spansSubmitter: ActorRef, config: ZipkinConfig) extends Actor {
 
-  private val marker = "EndpointWriter"
   private var parentActor = false
 
   /*
@@ -46,15 +44,17 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
       // Create span of this TraceInfo and add it to the TrieMap
       val span = traceInfoToSpans(trace)
-      if (traceSpan.contains(rootToken)) traceSpan += (rootToken -> (traceSpan(rootToken) += (trace.token -> span)))
-      else traceSpan += (rootToken -> TrieMap(trace.token -> span))
+      traceSpan.get(rootToken) match {
+        case Some(spanMap) ⇒ spanMap += (trace.token -> span)
+        case None          ⇒ traceSpan += (rootToken -> TrieMap(trace.token -> span))
+      }
 
       checkUnicity(trace, rootToken)
 
       // Dirty param to know if this actor is the local which started to work on the request
       if (!parentActor && parentToken == rootToken) parentActor = true
       // Send spans periodically to Zipkin
-      if (trace.token == rootToken || (!parentActor && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == marker)) {
+      if (trace.token == rootToken || (!parentActor && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
         spansSubmitter ! new SpanBlock(traceSpan(rootToken).map(_._2.simpleSpan))
 
         traceSpan -= rootToken
@@ -66,21 +66,24 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
   // Check if this instance is part of an already existing span
   private def checkUnicity(trace: TraceInfo, rootToken: String) = {
     val instance = trace.metadata.getOrElse(ZipkinConfig.spanUniqueClass, "")
-    if (traceInstance(rootToken).contains(instance) && traceSpan(rootToken).contains(traceInstance(rootToken)(instance))) {
-      val realParentToken = traceInstance(rootToken)(instance)
-      traceSpan(rootToken)(realParentToken).addToRecords(
-        ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-        new NanoTimestamp(trace.timestamp.nanos))
-      traceSpan(rootToken)(realParentToken).addToRecords(
-        ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-        new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
 
-      traceSpan(rootToken)(realParentToken).addSegments(trace.segments)
+    traceInstance(rootToken).get(instance) match {
+      case Some(realParentToken) ⇒ traceSpan(rootToken).get(realParentToken) match {
+        case Some(span) ⇒
+          span.addToRecords(
+            ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+            new NanoTimestamp(trace.timestamp.nanos))
+          span.addToRecords(
+            ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+            new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
+          span.addSegments(trace.segments)
 
-      traceSpan(rootToken) -= trace.token
-      traceParent(rootToken) += (trace.token -> realParentToken)
-    } else {
-      traceInstance(rootToken) += (instance -> trace.token)
+          traceSpan(rootToken) -= trace.token
+          traceParent(rootToken) += (trace.token -> realParentToken)
+        case None ⇒
+          traceInstance(rootToken) += (instance -> trace.token)
+      }
+      case None ⇒ traceInstance(rootToken) += (instance -> trace.token)
     }
   }
 
@@ -96,7 +99,7 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
     val cleanMetaData = mutable.Map(trace.metadata
       .filterKeys(k ⇒ !k.startsWith(ZipkinConfig.internalPrefix) && k != HierarchyConfig.rootToken && k != HierarchyConfig.parentToken).toSeq: _*)
-    val endpoint = Endpoint.createApplicationEndpoint(trace.metadata.getOrElse(ZipkinConfig.spanClass, "Request"))
+    val endpoint = Endpoint.createEndpoint(trace.metadata.getOrElse(ZipkinConfig.spanClass, "Request"), config.service.host, config.service.port)
 
     Span(trace, traceId, rootSpanId, trace.name, TimestampConverter.timestampToMicros(trace.timestamp),
       TimestampConverter.durationToMicros(trace.elapsedTime), cleanMetaData, parentSpanId, endpoint)
@@ -112,7 +115,7 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
 object Endpoint {
   def createApplicationEndpoint(service: String) =
-    createEndpoint(service, "localhost", 9410)
+    createEndpoint(service, "localhost", 0)
 
   def createEndpoint(service: String, host: String, port: Int): thrift.Endpoint =
     createEndpoint(service, InetAddress.getByName(host), port)
@@ -136,7 +139,7 @@ object TimestampConverter {
 
 case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, start: Long, duration: Long,
     annotations: mutable.Map[String, String], parentSpanId: Long = 0, endpoint: thrift.Endpoint = Endpoint.createApplicationEndpoint("zipkin"),
-    isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) extends LazyLogging {
+    isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) {
 
   val otherSegments = ListBuffer.empty[SegmentInfo]
 
@@ -165,21 +168,13 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
 
     span.set_name(fullName)
 
-    val sa = new thrift.Annotation()
-    sa.set_timestamp(start)
-    sa.set_value(if (isClient) thrift.zipkinConstants.CLIENT_SEND else thrift.zipkinConstants.SERVER_RECV)
+    val sa = new thrift.Annotation(start, if (isClient) thrift.zipkinConstants.CLIENT_SEND else thrift.zipkinConstants.SERVER_RECV)
     sa.set_host(endpoint)
-    val ea = new thrift.Annotation()
-    ea.set_timestamp(maxTimestamp)
-    ea.set_value(if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND)
+    val ea = new thrift.Annotation(maxTimestamp, if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND)
     ea.set_host(sa.get_host())
 
-    val begin = new thrift.Annotation()
-    begin.set_timestamp(start)
-    begin.set_value(ZipkinConfig.segmentBegin + name)
-    val end = new thrift.Annotation()
-    end.set_timestamp(start + duration)
-    end.set_value(ZipkinConfig.segmentEnd + name)
+    val begin = new thrift.Annotation(start, ZipkinConfig.segmentBegin + name)
+    val end = new thrift.Annotation(start + duration, ZipkinConfig.segmentEnd + name)
 
     span.add_to_annotations(sa)
     span.add_to_annotations(begin)

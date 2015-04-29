@@ -1,6 +1,11 @@
 <!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
 
 <aspectj>
+    <aspects>
+        <concrete-aspect name="kamon.zipkin.instrumentation.CustomZipkinInstrumentation" extends="kamon.zipkin.instrumentation.EnableZipkinInstrumentation">
+            <pointcut name="optionalZipkinPointcut" expression="execution(* *.helloZipkinExplicit(..))" />
+        </concrete-aspect>
+    </aspects>
     <weaver>
         <include within="*" />
 

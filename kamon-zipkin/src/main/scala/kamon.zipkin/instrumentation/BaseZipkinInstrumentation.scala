@@ -32,9 +32,9 @@ class BaseZipkinInstrumentation {
         child.addMetadata(ZipkinConfig.spanType, msg.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanUniqueClass, pjp.getTarget.toString)
 
-        child.addMetadata(msg.getClass.getSimpleName, msg.toString)
+        // child.addMetadata(msg.getClass.getSimpleName, msg.toString)
 
-        //child.startSegment(msg.getClass.getSimpleName, ZipkinConfig.internalPrefix + "type", "ZipkinConfig").finish()
+        // child.startSegment(msg.getClass.getSimpleName, ZipkinConfig.internalPrefix + "type", "ZipkinConfig").finish()
         pjp.proceed()
 
         child.finish()
