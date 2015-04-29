@@ -17,7 +17,7 @@ import scala.collection.mutable.ListBuffer
 class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
   private val marker = "EndpointWriter"
-  var parentActor = false
+  private var parentActor = false
 
   /*
    * Associate to each token corresponding span
@@ -86,7 +86,8 @@ class ZipkinActor(spansSubmitter: ActorRef) extends Actor with LazyLogging {
 
   private def traceInfoToSpans(trace: TraceInfo): Span = {
     val rootToken = trace.metadata.getOrElse(HierarchyConfig.rootToken, "")
-    val parentToken = traceParent(rootToken).getOrElse(parentToken, trace.metadata.getOrElse(HierarchyConfig.parentToken, ""))
+    val parentMeta = trace.metadata.getOrElse(HierarchyConfig.parentToken, "")
+    val parentToken = traceParent(rootToken).getOrElse(parentMeta, parentMeta)
     val token = trace.token
 
     val traceId = longHash(rootToken)
