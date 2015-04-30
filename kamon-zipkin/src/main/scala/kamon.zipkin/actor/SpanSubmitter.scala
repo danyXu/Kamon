@@ -2,6 +2,7 @@ package kamon.zipkin.actor
 
 import akka.actor.Actor
 import com.github.levkhomich.akka.tracing.TracingExtensionImpl
+import kamon.zipkin.models.SpanBlock
 
 /*
  * This actor is used to submit spans to akka-tracing @ https://github.com/levkhomich/akka-tracing

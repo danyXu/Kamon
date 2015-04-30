@@ -31,6 +31,7 @@ class BaseZipkinInstrumentation {
         child.addMetadata(ZipkinConfig.spanClass, pjp.getTarget.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanType, msg.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanUniqueClass, pjp.getTarget.toString)
+        if (tokenEncoded.length > 1) child.addMetadata(ZipkinConfig.remote, "ok")
 
         // child.addMetadata(msg.getClass.getSimpleName, msg.toString)
 

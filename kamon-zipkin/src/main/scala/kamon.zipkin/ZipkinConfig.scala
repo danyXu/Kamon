@@ -16,6 +16,8 @@ object ZipkinConfig {
 
   val endpointMarker = "EndpointWriter"
   val recordMinDuration = 100
+
+  val remote = internalPrefix + "remote"
 }
 
 class ZipkinConfig(zipkinConfig: Config) {
