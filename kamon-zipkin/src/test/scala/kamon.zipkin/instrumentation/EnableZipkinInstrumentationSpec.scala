@@ -1,6 +1,5 @@
 package kamon.zipkin.instrumentation
 
-import akka.testkit.TestProbe
 import kamon.Kamon
 import kamon.testkit.BaseKamonSpec
 import kamon.trace.{ TraceInfo, Tracer }
@@ -23,26 +22,6 @@ class EnableZipkinInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instr
 
       traceInfo.segments.size should be(1)
       traceInfo.segments.find(_.name == "helloZipkin()") should be('defined)
-    }
-
-  }
-
-  "the enable instrumentation of zipkin" should {
-
-    "log execution of methods explicitly added to aop.xml file" in {
-      Kamon.tracer.subscribe(testActor)
-
-      Tracer.withContext(newContext("testKamonZipkin")) {
-        val hello = new TestExplicitAnnotation()
-        hello.helloZipkinExplicit()
-        Tracer.currentContext.finish()
-      }
-
-      val traceInfo = expectMsgType[TraceInfo]
-      Kamon.tracer.unsubscribe(testActor)
-
-      traceInfo.segments.size should be(1)
-      traceInfo.segments.find(_.name == "helloZipkinExplicit()") should be('defined)
     }
 
   }

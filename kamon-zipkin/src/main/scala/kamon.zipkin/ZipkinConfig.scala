@@ -20,13 +20,11 @@ object ZipkinConfig {
   val remote = internalPrefix + "remote"
 }
 
-class ZipkinConfig(zipkinConfig: Config) {
+class ZipkinConfig(config: Config) {
   object service {
-    private val config = zipkinConfig.getConfig("service")
-
     val host = config.getString("host") match {
       case "auto" ⇒ InetAddress.getLocalHost
-      case host   ⇒ InetAddress.getByName(host)
+      case name   ⇒ InetAddress.getByName(name)
     }
     val port = config.getInt("port")
   }

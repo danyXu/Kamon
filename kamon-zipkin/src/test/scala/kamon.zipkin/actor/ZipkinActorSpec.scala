@@ -9,6 +9,7 @@ import com.github.levkhomich.akka.tracing.thrift
 import kamon.trace.{ HierarchyConfig, SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
+import kamon.zipkin.models._
 
 import scala.collection.mutable
 
@@ -58,7 +59,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
     "return a SpanBlock when the TraceInfo concerns the rootToken" in new ConfigTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config)))
+      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config, "root", false)))
       prob.watch(zipkinActor)
 
       val trace = TraceInfo("", "root", NanoTimestamp.now, NanoInterval.default,
@@ -70,7 +71,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
     "not return anything when the TraceInfo doesn't concern the rootToken" in new TraceInfoTest with ConfigTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config)))
+      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config, "", false)))
       prob.watch(zipkinActor)
 
       zipkinActor ! trace
@@ -80,7 +81,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
   }
 
   trait ConfigTest {
-    val config = new ZipkinConfig(system.settings.config.getConfig("kamon.zipkin"))
+    val config = new ZipkinConfig(system.settings.config.getConfig("app"))
   }
 
   trait EndpointTest {

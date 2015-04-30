@@ -1,10 +1,8 @@
 package kamon.zipkin.instrumentation
 
 import akka.actor.{ ActorRef, Actor, Props }
-import com.typesafe.config.ConfigFactory
-import kamon.Kamon
 import kamon.testkit.BaseKamonSpec
-import kamon.trace.{ TraceInfo, HierarchyConfig, Tracer }
+import kamon.trace.{ HierarchyConfig, Tracer }
 
 class BaseZipkinInstrumentationSpec extends BaseKamonSpec("base-zipkin-instrumentation-spec") {
 
