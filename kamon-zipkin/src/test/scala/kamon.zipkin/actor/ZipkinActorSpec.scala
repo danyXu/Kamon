@@ -12,10 +12,11 @@ import kamon.zipkin.ZipkinConfig
 import kamon.zipkin.models._
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 
 class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
-  "the actor of zipkin" should {
+  "the zipkin actor system" should {
 
     "create an Endpoint correctly" in new EndpointTest {
       val e = new thrift.Endpoint()
@@ -57,31 +58,39 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       s should be(span)
     }
 
-    "return a SpanBlock when the TraceInfo concerns the rootToken" in new ConfigTest {
+    "return a SpanBlock when the TraceInfo concerns the rootToken" in new TraceInfoTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config, "root", false)))
-      prob.watch(zipkinActor)
-
-      val trace = TraceInfo("", "root", NanoTimestamp.now, NanoInterval.default,
-        Map[String, String](HierarchyConfig.rootToken -> "root", HierarchyConfig.parentToken -> "root"), List[SegmentInfo]())
-      zipkinActor ! trace
-
+      TestActorRef(Props(new ZipkinActorSupervisor(prob.ref))) ! trace.copy(token = trace.metadata(HierarchyConfig.rootToken))
       prob.expectMsgType[SpanBlock]
     }
 
-    "not return anything when the TraceInfo doesn't concern the rootToken" in new TraceInfoTest with ConfigTest {
+    "not return anything when the TraceInfo doesn't concern the rootToken" in new TraceInfoTest {
       val prob = TestProbe()
-      val zipkinActor = TestActorRef(Props(new ZipkinActor(prob.ref, config, "", false)))
-      prob.watch(zipkinActor)
-
-      zipkinActor ! trace
-
-      prob.expectNoMsg()
+      TestActorRef(Props(new ZipkinActorSupervisor(prob.ref))) ! trace
+      prob.expectNoMsg(500 millis)
     }
-  }
 
-  trait ConfigTest {
-    val config = new ZipkinConfig(system.settings.config.getConfig("app"))
+    "create an unique actor for each trace" in new TraceInfoTest {
+      val prob = TestProbe()
+      val supervisor = TestActorRef(Props(new ZipkinActorSupervisor(self)))
+
+      supervisor ! trace
+      supervisor ! prob.ref
+
+      prob.expectMsg(List("root"))
+    }
+
+    "delete an actor when its corresponding trace ended" in new TraceInfoTest {
+      val prob = TestProbe()
+      val supervisor = TestActorRef(Props(new ZipkinActorSupervisor(self)))
+
+      supervisor ! trace.copy(token = trace.metadata(HierarchyConfig.rootToken))
+      Thread.sleep(100)
+      supervisor ! prob.ref
+
+      prob.expectMsg(List())
+    }
+
   }
 
   trait EndpointTest {
@@ -97,7 +106,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
     val traceToken = "traceToken"
     val traceStart = NanoTimestamp.now
     val traceDuration = NanoInterval.default
-    val metadata = Map[String, String]()
+    val metadata = Map[String, String](HierarchyConfig.rootToken -> "root")
     val segments = List[SegmentInfo]()
 
     val trace = TraceInfo(traceName, traceToken, traceStart, traceDuration, metadata, segments)

@@ -15,17 +15,18 @@ object ZipkinConfig {
   val segmentEnd = "END> "
 
   val endpointMarker = "EndpointWriter"
-  val recordMinDuration = 100
 
   val remote = internalPrefix + "remote"
 }
 
 class ZipkinConfig(config: Config) {
+  val recordMinDuration = config.getInt("kamon.zipkin.record-min")
+
   object service {
-    val host = config.getString("host") match {
+    val host = config.getString("app.host") match {
       case "auto" ⇒ InetAddress.getLocalHost
       case name   ⇒ InetAddress.getByName(name)
     }
-    val port = config.getInt("port")
+    val port = config.getInt("app.port")
   }
 }

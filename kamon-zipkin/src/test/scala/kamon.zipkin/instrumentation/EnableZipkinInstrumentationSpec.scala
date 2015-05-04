@@ -30,5 +30,3 @@ class EnableZipkinInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instr
 
 @EnableZipkin
 class TestAnnotation { def helloZipkin() = "hello" }
-
-//class TestExplicitAnnotation { def helloZipkinExplicit() = "hello explicit" }

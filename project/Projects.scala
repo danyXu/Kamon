@@ -28,7 +28,6 @@ object Projects extends Build {
     .settings(formatSettings: _*)
     .settings(noPublishing: _*)
 
-
   lazy val kamonCore: Project = Project("kamon-core", file("kamon-core"))
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
@@ -40,7 +39,6 @@ object Projects extends Build {
         provided(aspectJ) ++
         optional(logback) ++
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
-
 
   lazy val kamonAkka = Project("kamon-akka", file("kamon-akka"))
     .dependsOn(kamonCore % "compile->compile;test->test")
@@ -54,7 +52,6 @@ object Projects extends Build {
           provided(aspectJ) ++
           optional(logback) ++
           test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
-
 
   lazy val kamonScala = Project("kamon-scala", file("kamon-scala"))
     .dependsOn(kamonCore % "compile->compile;test->test")
@@ -79,7 +76,6 @@ object Projects extends Build {
         provided(aspectJ) ++
         test(scalatest, akkaTestKit, akkaSlf4j, slf4Jul, slf4Log4j, logback))
 
-
   lazy val kamonSpray = Project("kamon-spray", file("kamon-spray"))
     .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka, kamonTestkit % "test")
     .settings(basicSettings: _*)
@@ -103,7 +99,6 @@ object Projects extends Build {
         provided(aspectJ) ++
         test(scalatest, akkaTestKit, sprayTestkit, slf4Api, akkaSlf4j))
 
-
   lazy val kamonPlayground = Project("kamon-playground", file("kamon-playground"))
     .dependsOn(kamonSpray, kamonNewrelic, kamonStatsD, kamonDatadog, kamonLogReporter, kamonSystemMetrics)
     .settings(basicSettings: _*)
@@ -114,7 +109,7 @@ object Projects extends Build {
     .settings(
       libraryDependencies ++=
         compile(akkaActor, akkaSlf4j, sprayCan, sprayClient, sprayRouting, logback))
-
+  
   lazy val kamonTestkit = Project("kamon-testkit", file("kamon-testkit"))
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
@@ -157,7 +152,6 @@ object Projects extends Build {
         compile(akkaActor) ++
         test(scalatest, akkaTestKit, slf4Api, slf4nop))
 
-
   lazy val kamonLogReporter = Project("kamon-log-reporter", file("kamon-log-reporter"))
     .dependsOn(kamonCore)
     .settings(basicSettings: _*)
@@ -167,7 +161,6 @@ object Projects extends Build {
       libraryDependencies ++=
         compile(akkaActor) ++
         test(scalatest, akkaTestKit, slf4Api, slf4nop))
-
 
   lazy val kamonSystemMetrics = Project("kamon-system-metrics", file("kamon-system-metrics"))
     .dependsOn(kamonCore % "compile->compile;test->test")

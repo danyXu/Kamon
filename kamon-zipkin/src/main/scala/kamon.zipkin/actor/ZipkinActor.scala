@@ -1,52 +1,55 @@
 package kamon.zipkin.actor
 
 import akka.actor._
+import kamon.Kamon
 import kamon.trace.{ HierarchyConfig, TraceInfo }
 import kamon.util.NanoTimestamp
-import kamon.zipkin.ZipkinConfig
+import kamon.zipkin.{ Zipkin, ZipkinConfig }
 import kamon.zipkin.models._
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
-class ZipkinActorSupervisor(spansSubmitter: ActorRef, config: ZipkinConfig) extends Actor with ActorLogging {
+class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLogging {
 
-  val tokenActors = TrieMap.empty[String, ActorRef]
+  val tokenActors = TrieMap.empty[String, Option[ActorRef]]
 
   def receive: Receive = {
     case trace: TraceInfo ⇒
       trace.metadata.get(HierarchyConfig.rootToken) match {
         case Some(rootToken) ⇒
           tokenActors.get(rootToken) match {
-            case Some(tokenActor) ⇒ tokenActor ! trace
             case None ⇒
-              val tokenActor = context.actorOf(Props(new ZipkinActor(spansSubmitter, config, rootToken,
+              val tokenActor = context.actorOf(Props(new ZipkinActor(spansSubmitter, rootToken,
                 trace.metadata.contains(ZipkinConfig.remote))))
-              tokenActors += (rootToken -> tokenActor)
+              tokenActors += (rootToken -> Some(tokenActor))
               tokenActor ! trace
+            case Some(Some(tokenActor)) ⇒ tokenActor ! trace
+            case Some(None)             ⇒
           }
-        case None ⇒ log.error(s"TraceInfo doesn't have a ${HierarchyConfig.rootToken}")
+        case None ⇒ log.warning(s"TraceInfo doesn't have a ${HierarchyConfig.rootToken}")
+      }
+    case query: ActorRef ⇒ query ! tokenActors.filter(_._2.isDefined).flatMap(a ⇒ List(a._1))
+    case rootToken: String ⇒
+      tokenActors.get(rootToken) match {
+        case Some(Some(zipkinActor)) ⇒
+          tokenActors += (rootToken -> None)
+          zipkinActor ! PoisonPill
+        case Some(None) ⇒ log.error("Trying to end trace which already ended")
+        case None       ⇒ log.error("Trying to end trace which doesn't exist")
       }
   }
 
 }
 
-class ZipkinActor(spansSubmitter: ActorRef, config: ZipkinConfig, rootToken: String, remote: Boolean) extends Actor {
+class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) extends Actor with ActorLogging {
 
-  /*
-   * Associate to each token corresponding span
-   * token -> span
-   */
+  val config = Kamon(Zipkin).config
+  // Associate to each token corresponding span
   val traceSpan = TrieMap.empty[String, Span]
-  /*
-   * Associate to each instance corresponding token
-   * instance -> token
-   */
+  // Associate to each instance corresponding token
   val traceInstance = TrieMap.empty[String, String]
-  /*
-   * Associate to each token corresponding real parentToken
-   * token -> realParentToken
-   */
+  // Associate to each token corresponding real parentToken
   val traceParent = TrieMap.empty[String, String]
 
   def receive: Receive = {
@@ -58,8 +61,8 @@ class ZipkinActor(spansSubmitter: ActorRef, config: ZipkinConfig, rootToken: Str
 
       // Send spans to Zipkin
       if (trace.token == rootToken || (remote && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
+        sender() ! rootToken
         spansSubmitter ! new SpanBlock(traceSpan.map(_._2.simpleSpan))
-        context.stop(self)
       }
   }
 

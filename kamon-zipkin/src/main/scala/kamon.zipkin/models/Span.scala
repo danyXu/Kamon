@@ -3,9 +3,10 @@ package kamon.zipkin.models
 import java.nio.ByteBuffer
 
 import com.github.levkhomich.akka.tracing.thrift
+import kamon.Kamon
 import kamon.trace.{ SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
-import kamon.zipkin.ZipkinConfig
+import kamon.zipkin.{ Zipkin, ZipkinConfig }
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -74,13 +75,13 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     a.set_value(key)
     a.set_timestamp(TimestampConverter.timestampToMicros(value))
     val duration = TimestampConverter.durationToMicros(elapsedTime).toInt
-    if (duration > ZipkinConfig.recordMinDuration) a.set_duration(duration)
+    if (duration > Kamon(Zipkin).config.recordMinDuration) a.set_duration(duration)
     a
   }
 
   private def filterSegments(s: SegmentInfo): Boolean = {
     val duration = TimestampConverter.durationToMicros(s.elapsedTime).toInt
-    duration == 0 || duration > ZipkinConfig.recordMinDuration
+    duration == 0 || duration > Kamon(Zipkin).config.recordMinDuration
   }
 }
 
