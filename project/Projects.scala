@@ -189,7 +189,6 @@ object Projects extends Build {
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
-    .settings(noPublishing: _*)
     .settings(
       libraryDependencies ++=
         compile(el) ++
