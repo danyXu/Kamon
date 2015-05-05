@@ -14,17 +14,15 @@ class BaseZipkinInstrumentation {
   def aroundReceivePointcut(receive: Actor.Receive, msg: Any) {}
 
   @Around(value = "aroundReceivePointcut(receive,msg)", argNames = "pjp,receive,msg")
-  def receiveTracingAround(pjp: ProceedingJoinPoint, receive: Actor.Receive, msg: Any): Unit = {
-    if (!Tracer.currentContext.isEmpty) {
-      val tokenEncoded = Tracer.currentContext.token.split(HierarchyConfig.tokenSeparator)
-      val parentToken = tokenEncoded.last
-      val rootToken = {
-        if (tokenEncoded.length > 1) tokenEncoded.head
-        else Tracer.currentContext.metadata.get(HierarchyConfig.rootToken) match {
-          case Some(token) ⇒ token
+  def receiveTracingAround(pjp: ProceedingJoinPoint, receive: Actor.Receive, msg: Any): Unit = Tracer.currentContext.isEmpty match {
+    case false ⇒
+      val (rootToken: String, parentToken: String, remote: Boolean) = Tracer.currentContext.token.split(HierarchyConfig.tokenSeparator) match {
+        case Array(root, parent) ⇒ (root, parent, true)
+        case Array(parent) ⇒ Tracer.currentContext.metadata.get(HierarchyConfig.rootToken) match {
+          case Some(token) ⇒ (token, parent, false)
           case None ⇒
-            Tracer.currentContext.addMetadata(HierarchyConfig.rootToken, parentToken)
-            parentToken
+            Tracer.currentContext.addMetadata(HierarchyConfig.rootToken, parent)
+            (parent, parent, false)
         }
       }
 
@@ -37,7 +35,7 @@ class BaseZipkinInstrumentation {
         child.addMetadata(ZipkinConfig.spanClass, pjp.getTarget.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanType, msg.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanUniqueClass, pjp.getTarget.toString)
-        if (tokenEncoded.length > 1) child.addMetadata(ZipkinConfig.remote, "ok")
+        if (remote) child.addMetadata(ZipkinConfig.remote, "remote")
 
         // child.addMetadata(msg.getClass.getSimpleName, msg.toString)
 
@@ -46,9 +44,7 @@ class BaseZipkinInstrumentation {
 
         child.finish()
       }
-    } else {
-      pjp.proceed()
-    }
+    case true ⇒ pjp.proceed()
   }
 
   /*

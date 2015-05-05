@@ -22,9 +22,9 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     var fullName = name
 
     val span = new thrift.Span()
-    span.set_trace_id(traceId)
-    span.set_id(spanId)
-    span.set_parent_id(parentSpanId)
+      .set_trace_id(traceId)
+      .set_id(spanId)
+      .set_parent_id(parentSpanId)
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
     trace.segments.filter(s ⇒ filterSegments(s)).foreach {
@@ -34,18 +34,20 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
       segment ⇒ span.add_to_annotations(timestampAnnotation(segment.name, segment.timestamp, segment.elapsedTime))
     }
     records.foreach {
-      case (k, v) ⇒
-        if (TimestampConverter.timestampToMicros(v) > maxTimestamp) maxTimestamp = TimestampConverter.timestampToMicros(v)
+      case (k, v) if k.startsWith(ZipkinConfig.segmentBegin) ⇒
+        fullName += " - " + k.stripPrefix(ZipkinConfig.segmentBegin)
         span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
-        if (k.startsWith(ZipkinConfig.segmentBegin)) fullName += " - " + k.stripPrefix(ZipkinConfig.segmentBegin)
+      case (k, v) if k.startsWith(ZipkinConfig.segmentEnd) && (TimestampConverter.timestampToMicros(v) > maxTimestamp) ⇒
+        maxTimestamp = TimestampConverter.timestampToMicros(v)
+        span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
+      case (k, v) ⇒
+        span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
     }
 
     span.set_name(fullName)
 
-    val sa = new thrift.Annotation(start, if (isClient) thrift.zipkinConstants.CLIENT_SEND else thrift.zipkinConstants.SERVER_RECV)
-    sa.set_host(endpoint)
-    val ea = new thrift.Annotation(maxTimestamp, if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND)
-    ea.set_host(sa.get_host())
+    val sa = new thrift.Annotation(start, if (isClient) thrift.zipkinConstants.CLIENT_SEND else thrift.zipkinConstants.SERVER_RECV).set_host(endpoint)
+    val ea = new thrift.Annotation(maxTimestamp, if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND).set_host(sa.get_host())
 
     val begin = new thrift.Annotation(start, ZipkinConfig.segmentBegin + name)
     val end = new thrift.Annotation(start + duration, ZipkinConfig.segmentEnd + name)
@@ -71,12 +73,11 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
   }
 
   private def timestampAnnotation(key: String, value: NanoTimestamp, elapsedTime: NanoInterval) = {
-    val a = new thrift.Annotation()
-    a.set_value(key)
-    a.set_timestamp(TimestampConverter.timestampToMicros(value))
-    val duration = TimestampConverter.durationToMicros(elapsedTime).toInt
-    if (duration > Kamon(Zipkin).config.recordMinDuration) a.set_duration(duration)
-    a
+    val a = new thrift.Annotation().set_value(key).set_timestamp(TimestampConverter.timestampToMicros(value))
+    TimestampConverter.durationToMicros(elapsedTime) match {
+      case d if d > Kamon(Zipkin).config.recordMinDuration ⇒ a.set_duration(d.toInt)
+      case _ ⇒ a
+    }
   }
 
   private def filterSegments(s: SegmentInfo): Boolean = {

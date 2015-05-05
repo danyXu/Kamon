@@ -11,7 +11,6 @@ import kamon.zipkin.models.SpanBlock
 class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor {
 
   def receive = {
-    case spanBlock: SpanBlock ⇒
-      tracingExt.submitSpans(spanBlock.spans)
+    case spanBlock: SpanBlock ⇒ tracingExt.submitSpans(spanBlock.spans)
   }
 }

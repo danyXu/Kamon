@@ -84,6 +84,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       val prob = TestProbe()
       val supervisor = TestActorRef(Props(new ZipkinActorSupervisor(self)))
 
+      supervisor ! trace
       supervisor ! trace.copy(token = trace.metadata(HierarchyConfig.rootToken))
       Thread.sleep(100)
       supervisor ! prob.ref

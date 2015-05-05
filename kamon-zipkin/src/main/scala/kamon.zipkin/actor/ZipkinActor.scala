@@ -44,7 +44,7 @@ class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLo
 
 class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) extends Actor with ActorLogging {
 
-  val config = Kamon(Zipkin).config
+  lazy val config = Kamon(Zipkin).config
   // Associate to each token corresponding span
   val traceSpan = TrieMap.empty[String, Span]
   // Associate to each instance corresponding token
