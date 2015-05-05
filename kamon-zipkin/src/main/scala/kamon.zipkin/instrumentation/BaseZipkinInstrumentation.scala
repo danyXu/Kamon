@@ -18,8 +18,15 @@ class BaseZipkinInstrumentation {
     if (!Tracer.currentContext.isEmpty) {
       val tokenEncoded = Tracer.currentContext.token.split(HierarchyConfig.tokenSeparator)
       val parentToken = tokenEncoded.last
-      val rootToken = if (tokenEncoded.length > 1) tokenEncoded.head else Tracer.currentContext.metadata.getOrElse(HierarchyConfig.rootToken, parentToken)
-      if (rootToken == parentToken) Tracer.currentContext.addMetadata(HierarchyConfig.rootToken, rootToken)
+      val rootToken = {
+        if (tokenEncoded.length > 1) tokenEncoded.head
+        else Tracer.currentContext.metadata.get(HierarchyConfig.rootToken) match {
+          case Some(token) ⇒ token
+          case None ⇒
+            Tracer.currentContext.addMetadata(HierarchyConfig.rootToken, parentToken)
+            parentToken
+        }
+      }
 
       Tracer.withContext(Kamon.tracer.newContext(msg.getClass.getSimpleName)) {
         val child = Tracer.currentContext
