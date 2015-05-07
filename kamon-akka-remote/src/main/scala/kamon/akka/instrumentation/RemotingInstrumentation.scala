@@ -35,9 +35,13 @@ class RemotingInstrumentation {
     // Attach the TraceContext info, if available.
     Tracer.currentContext.collect { context ⇒
 
-      var token = context.token
-      val rootToken = context.metadata.getOrElse(HierarchyConfig.rootToken, "")
-      if (!rootToken.isEmpty) token = rootToken + HierarchyConfig.tokenSeparator + token
+      val token = context.metadata.get(HierarchyConfig.rootToken) match {
+        case Some(rootToken) ⇒ context.metadata.get(HierarchyConfig.spanUniqueClass) match {
+          case Some(spanUniqueClass) ⇒ rootToken + HierarchyConfig.tokenSeparator + spanUniqueClass + HierarchyConfig.tokenSeparator + context.token
+          case None                  ⇒ rootToken + HierarchyConfig.tokenSeparator + context.token
+        }
+        case None ⇒ context.token
+      }
 
       envelopeBuilder.setTraceContext(RemoteTraceContext.newBuilder()
         .setTraceName(context.name)

@@ -3,20 +3,21 @@ package kamon.zipkin
 import java.net.InetAddress
 
 import com.typesafe.config.Config
+import kamon.trace.HierarchyConfig
 
 object ZipkinConfig {
-  val internalPrefix = "internal."
+  val internalPrefix = HierarchyConfig.internalPrefix
 
+  val parentClass = internalPrefix + "parentClass"
   val spanClass = internalPrefix + "class"
   val spanType = internalPrefix + "type"
-  val spanUniqueClass = internalPrefix + "uniqueClass"
+  val remote = internalPrefix + "remote"
 
   val segmentBegin = "BEGIN> "
   val segmentEnd = "END> "
 
+  val rootName = "Request"
   val endpointMarker = "EndpointWriter"
-
-  val remote = internalPrefix + "remote"
 }
 
 class ZipkinConfig(config: Config) {

@@ -20,35 +20,24 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
 
     "create an Endpoint correctly" in new EndpointTest {
       val e = new thrift.Endpoint()
-      e.set_service_name(service)
-      e.set_ipv4(ByteBuffer.wrap(InetAddress.getByName(host).getAddress).getInt)
-      e.set_port(port.toShort)
+        .set_service_name(service)
+        .set_ipv4(ByteBuffer.wrap(InetAddress.getByName(host).getAddress).getInt)
+        .set_port(port.toShort)
 
       e should be(endpoint)
     }
 
     "create a Span correctly" in new SpanTest {
       val s = new thrift.Span()
-      s.set_trace_id(0L)
-      s.set_name(spanName)
-      s.set_id(spanId)
-      s.set_parent_id(parentSpanId)
+        .set_trace_id(0L)
+        .set_id(0L)
+        .set_parent_id(0L)
+        .set_name(spanName)
 
-      val sa = new thrift.Annotation()
-      sa.set_timestamp(spanStart)
-      sa.set_value(thrift.zipkinConstants.SERVER_RECV)
-      sa.set_host(endpoint)
-      val ea = new thrift.Annotation()
-      ea.set_timestamp(spanStart + spanDuration)
-      ea.set_value(thrift.zipkinConstants.SERVER_SEND)
-      ea.set_host(sa.get_host())
-
-      val begin = new thrift.Annotation()
-      begin.set_timestamp(spanStart)
-      begin.set_value(ZipkinConfig.segmentBegin + spanName)
-      val end = new thrift.Annotation()
-      end.set_timestamp(spanStart + spanDuration)
-      end.set_value(ZipkinConfig.segmentEnd + spanName)
+      val sa = new thrift.Annotation(spanStart, thrift.zipkinConstants.SERVER_RECV).set_host(endpoint)
+      val ea = new thrift.Annotation(spanStart + spanDuration, thrift.zipkinConstants.SERVER_SEND).set_host(sa.get_host())
+      val begin = new thrift.Annotation(spanStart, ZipkinConfig.segmentBegin + spanName)
+      val end = new thrift.Annotation(spanStart + spanDuration, ZipkinConfig.segmentEnd + spanName)
 
       s.add_to_annotations(sa)
       s.add_to_annotations(begin)
@@ -114,9 +103,9 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
   }
 
   trait SpanTest extends TraceInfoTest with EndpointTest {
-    val traceId = 0L
-    val spanId = 0L
-    val parentSpanId = 0L
+    val traceId = ""
+    val spanId = ""
+    val parentSpanId = ""
     val spanName = "spanName"
     val spanStart = NanoTimestamp.now.nanos
     val spanDuration = NanoInterval.default.nanos

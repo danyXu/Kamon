@@ -118,17 +118,17 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     isOpen: Boolean = true, isLocal: Boolean = true): TraceContext = {
 
     def newMetricsOnlyContext(token: String): TraceContext =
-      new MetricsOnlyContext(traceName, token, isOpen, _settings.levelOfDetail, startTimestamp, null)
+      new MetricsOnlyContext(traceName, token, isOpen, LevelOfDetail.MetricsOnly, startTimestamp, null)
 
     val traceToken = token.getOrElse(newToken)
 
-    if (_settings.levelOfDetail == LevelOfDetail.MetricsOnly || !isLocal)
-      newMetricsOnlyContext(traceToken)
-    else {
-      if (_settings.sampleFilter.foldLeft(false)(_ || traceName.startsWith(_)) && !_settings.sampler.shouldTrace)
-        newMetricsOnlyContext(traceToken)
-      else
-        new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
+    _settings.levelOfDetail match {
+      case LevelOfDetail.MetricsOnly ⇒ newMetricsOnlyContext(traceToken)
+      case _ ⇒
+        if (!_settings.sampleFilter.forall(!traceName.startsWith(_)) && !_settings.sampler.shouldTrace && isLocal)
+          newMetricsOnlyContext(traceToken)
+        else
+          new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
     }
   }
 

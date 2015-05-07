@@ -11,9 +11,11 @@ import kamon.zipkin.{ Zipkin, ZipkinConfig }
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, start: Long, duration: Long,
-    annotations: mutable.Map[String, String], parentSpanId: Long = 0, endpoint: thrift.Endpoint = Endpoint.createApplicationEndpoint("zipkin"),
+case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String, start: Long, duration: Long,
+    annotations: mutable.Map[String, String], parentSpanId: String = "", endpoint: thrift.Endpoint = Endpoint.createApplicationEndpoint("zipkin"),
     isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) {
+
+  override def toString: String = s"Span($spanId, $parentSpanId)"
 
   val otherSegments = ListBuffer.empty[SegmentInfo]
 
@@ -22,9 +24,9 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     var fullName = name
 
     val span = new thrift.Span()
-      .set_trace_id(traceId)
-      .set_id(spanId)
-      .set_parent_id(parentSpanId)
+      .set_trace_id(longHash(traceId))
+      .set_id(longHash(spanId))
+      .set_parent_id(longHash(parentSpanId))
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
     trace.segments.filter(s ⇒ filterSegments(s)).foreach {
@@ -84,6 +86,17 @@ case class Span(trace: TraceInfo, traceId: Long, spanId: Long, name: String, sta
     val duration = TimestampConverter.durationToMicros(s.elapsedTime).toInt
     duration == 0 || duration > Kamon(Zipkin).config.recordMinDuration
   }
+
+  private def longHash(string: String): Long = {
+    string.isEmpty match {
+      case true ⇒ 0L
+      case false ⇒
+        var h = 1125899906842597L
+        val len = string.length
+        for (i ← 0 until len) h = 2 * h + string.charAt(i)
+        h
+    }
+  }
 }
 
 object TimestampConverter {
@@ -91,4 +104,4 @@ object TimestampConverter {
   def durationToMicros(nano: NanoInterval) = nano.nanos / 1000
 }
 
-case class SpanBlock(spans: Iterable[thrift.Span])
+case class SpanBlock(spans: mutable.Map[String, Span])

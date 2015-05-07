@@ -1,6 +1,6 @@
 package kamon.zipkin.instrumentation
 
-import kamon.trace.Tracer
+import kamon.trace.{ LevelOfDetail, Tracer }
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{ Aspect, Pointcut, Around }
 
@@ -30,18 +30,19 @@ abstract class EnableZipkinInstrumentation {
   def optionalZipkinPointcut() = {}
 
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
-  def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any = Tracer.currentContext.isEmpty match {
-    case false ⇒
-      val args = pjp.getArgs.foldLeft("") {
-        case (a, b) if a.isEmpty ⇒ a + b.getClass.getSimpleName
-        case (a, b)              ⇒ a + ", " + b.getClass.getSimpleName
-      }
-      val txt = pjp.getSignature.getName + "(" + args + ")"
-      val segment = Tracer.currentContext.startSegment(txt, "", "")
-      val r = pjp.proceed()
-      segment.finish()
-      r
-    case true ⇒ pjp.proceed()
-  }
+  def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
+    !Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly match {
+      case true ⇒
+        val args = pjp.getArgs.foldLeft("") {
+          case (a, b) if a.isEmpty ⇒ a + b.getClass.getSimpleName
+          case (a, b)              ⇒ a + ", " + b.getClass.getSimpleName
+        }
+        val txt = pjp.getSignature.getName + "(" + args + ")"
+        val segment = Tracer.currentContext.startSegment(txt, "", "")
+        val r = pjp.proceed()
+        segment.finish()
+        r
+      case false ⇒ pjp.proceed()
+    }
 
 }
