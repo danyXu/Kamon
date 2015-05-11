@@ -17,8 +17,8 @@ class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor with ActorLo
 
   def receive = {
     case spanBlock: SpanBlock ⇒
-      val spans = buildHierarchy(spanBlock.spans)
-      tracingExt.submitSpans(spans.map(_._2.simpleSpan))
+      val spans = spanBlock.spans
+      if (spanBlock.remote || spans.contains(spanBlock.rootToken)) tracingExt.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
   }
 
   private def buildHierarchy(spans: mutable.Map[String, Span]): mutable.Map[String, Span] = {

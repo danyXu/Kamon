@@ -21,7 +21,7 @@ class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLo
             case None ⇒
               val tokenActor = context.actorOf(Props(new ZipkinActor(spansSubmitter, rootToken,
                 trace.metadata.contains(ZipkinConfig.remote))))
-              tokenActors += (rootToken -> Some(tokenActor))
+              tokenActors.put(rootToken, Some(tokenActor))
               tokenActor ! trace
             case Some(Some(tokenActor)) ⇒ tokenActor ! trace
             case Some(None)             ⇒
@@ -32,7 +32,7 @@ class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLo
     case rootToken: String ⇒
       tokenActors.get(rootToken) match {
         case Some(Some(zipkinActor)) ⇒
-          tokenActors += (rootToken -> None)
+          tokenActors.put(rootToken, None)
           zipkinActor ! PoisonPill
         case Some(None) ⇒ log.error("Trying to end trace which already ended")
         case None       ⇒ log.error("Trying to end trace which doesn't exist")
@@ -49,11 +49,11 @@ class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) 
   def receive: Receive = {
     case trace: TraceInfo ⇒
       // Create span of this TraceInfo and add it to the TrieMap
-      traceSpan += (trace.token -> traceInfoToSpans(trace))
+      traceSpan.put(trace.token, traceInfoToSpans(trace))
 
       // Send spans to Zipkin
       if (trace.token == rootToken || (remote && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
-        spansSubmitter ! new SpanBlock(traceSpan)
+        spansSubmitter ! new SpanBlock(traceSpan, rootToken, remote)
         sender() ! rootToken
       }
   }

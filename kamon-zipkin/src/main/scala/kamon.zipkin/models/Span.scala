@@ -93,8 +93,8 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
       case false ⇒
         var h = 1125899906842597L
         val len = string.length
-        for (i ← 0 until len) h = 2 * h + string.charAt(i)
-        h
+        for (i ← 0 until len) h = 31 * h + string.charAt(i)
+        h ^ 0
     }
   }
 }
@@ -104,4 +104,4 @@ object TimestampConverter {
   def durationToMicros(nano: NanoInterval) = nano.nanos / 1000
 }
 
-case class SpanBlock(spans: mutable.Map[String, Span])
+case class SpanBlock(spans: mutable.Map[String, Span], rootToken: String, remote: Boolean)

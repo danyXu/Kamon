@@ -29,7 +29,7 @@ object Settings {
   val ScalaVersion = "2.11.5"
 
   lazy val basicSettings = Seq(
-    crossScalaVersions      := Seq("2.10.5", "2.11.6"),
+    crossScalaVersions      := Seq("2.10.5", "2.11.5"),
     resolvers              ++= Dependencies.resolutionRepos,
     fork in run             := true,
     parallelExecution in Test := false,

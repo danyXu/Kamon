@@ -139,7 +139,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     _subscriptions.tell(TraceSubscriptions.Unsubscribe(subscriber))
 
   private[kamon] def dispatchTracingContext(trace: TracingContext): Unit =
-    if (_settings.sampler.shouldReport(trace.elapsedTime))
+    if (_settings.sampleFilter.forall(!trace.name.startsWith(_)) || _settings.sampler.shouldReport(trace.elapsedTime))
       if (trace.shouldIncubate)
         _incubator.tell(trace)
       else

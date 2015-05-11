@@ -175,7 +175,7 @@ object HierarchyConfig {
   val internalPrefix = "internal."
   val tokenSeparator = "::"
 
-  val rootToken = internalPrefix + "rootToken"
+  val rootToken = "rootToken"
   val parentToken = internalPrefix + "parentToken"
   val spanUniqueClass = internalPrefix + "spanUniqueClass"
 }
