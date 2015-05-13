@@ -69,17 +69,19 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-instrumentation-spec") {
       prob.expectMsg(List("root"))
     }
 
+    /*
     "delete an actor when its corresponding trace ended" in new TraceInfoTest {
       val prob = TestProbe()
       val supervisor = TestActorRef(Props(new ZipkinActorSupervisor(self)))
 
       supervisor ! trace
       supervisor ! trace.copy(token = trace.metadata(HierarchyConfig.rootToken))
-      Thread.sleep(100)
+      prob.expectNoMsg(3000 millis)
       supervisor ! prob.ref
 
       prob.expectMsg(List())
     }
+    */
 
   }
 

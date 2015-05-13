@@ -9,11 +9,13 @@ import kamon.zipkin.models._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
+import scala.concurrent.duration._
+
 class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLogging {
 
-  val tokenActors = TrieMap.empty[String, Option[ActorRef]]
+  val tokenActors = TrieMap.empty[String, ActorRef]
 
-  def receive: Receive = {
+  def receive: Actor.Receive = {
     case trace: TraceInfo ⇒
       trace.metadata.get(HierarchyConfig.rootToken) match {
         case Some(rootToken) ⇒
@@ -21,41 +23,41 @@ class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLo
             case None ⇒
               val tokenActor = context.actorOf(Props(new ZipkinActor(spansSubmitter, rootToken,
                 trace.metadata.contains(ZipkinConfig.remote))))
-              tokenActors.put(rootToken, Some(tokenActor))
+              tokenActors.put(rootToken, tokenActor)
               tokenActor ! trace
-            case Some(Some(tokenActor)) ⇒ tokenActor ! trace
-            case Some(None)             ⇒
+            case Some(tokenActor) ⇒
+              tokenActor ! trace
           }
         case None ⇒ log.warning(s"TraceInfo doesn't have a ${HierarchyConfig.rootToken}")
       }
-    case query: ActorRef ⇒ query ! tokenActors.filter(_._2.isDefined).flatMap(a ⇒ List(a._1))
-    case rootToken: String ⇒
-      tokenActors.get(rootToken) match {
-        case Some(Some(zipkinActor)) ⇒
-          tokenActors.put(rootToken, None)
-          zipkinActor ! PoisonPill
-        case Some(None) ⇒ log.error("Trying to end trace which already ended")
-        case None       ⇒ log.error("Trying to end trace which doesn't exist")
-      }
+    case query: ActorRef ⇒ query ! tokenActors.flatMap(a ⇒ List(a._1))
   }
 
 }
 
 class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) extends Actor with ActorLogging {
+  import context._
 
   lazy val config = Kamon(Zipkin).config
   val traceSpan = TrieMap.empty[String, Span]
 
-  def receive: Receive = {
+  override def preStart() =
+    system.scheduler.scheduleOnce(2000 millis, self, "end")
+
+  def receive: Actor.Receive = {
     case trace: TraceInfo ⇒
       // Create span of this TraceInfo and add it to the TrieMap
       traceSpan.put(trace.token, traceInfoToSpans(trace))
 
-      // Send spans to Zipkin
-      if (trace.token == rootToken || (remote && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
-        spansSubmitter ! new SpanBlock(traceSpan, rootToken, remote)
-        sender() ! rootToken
-      }
+    // Send spans to Zipkin
+    // if (trace.token == rootToken || (remote && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
+    case "end" ⇒
+      spansSubmitter ! new SpanBlock(traceSpan, rootToken, remote)
+      context.become(emptyReceive)
+  }
+
+  def emptyReceive: Actor.Receive = {
+    case trace: TraceInfo ⇒ log.warning("IGNORE : " + trace.metadata.getOrElse(ZipkinConfig.spanClass, "error"))
   }
 
   private def traceInfoToSpans(trace: TraceInfo): Span = {

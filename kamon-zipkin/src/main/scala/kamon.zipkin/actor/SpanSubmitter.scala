@@ -15,13 +15,13 @@ import scala.collection.mutable
  */
 class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor with ActorLogging {
 
-  def receive = {
+  def receive: Actor.Receive = {
     case spanBlock: SpanBlock ⇒
       val spans = spanBlock.spans
       if (spanBlock.remote || spans.contains(spanBlock.rootToken)) tracingExt.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
   }
 
-  private def buildHierarchy(spans: mutable.Map[String, Span]): mutable.Map[String, Span] = {
+  private def buildHierarchy(spans: mutable.Map[String, Span]): Map[String, Span] = {
     val traceInstance = mutable.Map.empty[String, String]
 
     spans.toSeq.sortBy(_._2.trace.timestamp.nanos).foreach {
@@ -59,7 +59,7 @@ class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor with ActorLo
         }
     }
 
-    spans
+    spans.toMap
   }
 
 }

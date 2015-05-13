@@ -125,10 +125,10 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     _settings.levelOfDetail match {
       case LevelOfDetail.MetricsOnly ⇒ newMetricsOnlyContext(traceToken)
       case _ ⇒
-        if (!_settings.sampleFilter.forall(!traceName.startsWith(_)) && !_settings.sampler.shouldTrace && isLocal)
-          newMetricsOnlyContext(traceToken)
-        else
-          new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
+        traceName match {
+          case _settings.filter(_*) if !_settings.sampler.shouldTrace ⇒ newMetricsOnlyContext(traceToken)
+          case _ ⇒ new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
+        }
     }
   }
 
@@ -139,11 +139,8 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     _subscriptions.tell(TraceSubscriptions.Unsubscribe(subscriber))
 
   private[kamon] def dispatchTracingContext(trace: TracingContext): Unit =
-    if (_settings.sampleFilter.forall(!trace.name.startsWith(_)) || _settings.sampler.shouldReport(trace.elapsedTime))
-      if (trace.shouldIncubate)
-        _incubator.tell(trace)
-      else
-        _subscriptions.tell(trace.generateTraceInfo)
+    if (trace.shouldIncubate) _incubator.tell(trace)
+    else _subscriptions.tell(trace.generateTraceInfo)
 
   /**
    *  Tracer Extension initialization.

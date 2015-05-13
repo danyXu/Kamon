@@ -48,7 +48,7 @@ private[kamon] class MetricsOnlyContext(traceName: String, val token: String, iz
   def isEmpty: Boolean = false
   def isOpen: Boolean = _isOpen
   def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
-  def metadata: TrieMap[String, String] = _metadata
+  def metadata: Map[String, String] = _metadata.toMap
 
   def finish(): Unit = {
     _isOpen = false

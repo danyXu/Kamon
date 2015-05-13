@@ -34,7 +34,7 @@ class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfD
   private val _metadata = TrieMap.empty[String, String]
 
   override def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
-  override def metadata: TrieMap[String, String] = _metadata
+  override def metadata: Map[String, String] = _metadata.toMap
 
   override def startSegment(segmentName: String, category: String, library: String): Segment = {
     _openSegments.incrementAndGet()
@@ -44,8 +44,10 @@ class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfD
   }
 
   override def finish(): Unit = {
-    super.finish()
-    traceInfoSink(this)
+    if (isOpen) {
+      super.finish()
+      traceInfoSink(this)
+    }
   }
 
   override def finishSegment(segmentName: String, category: String, library: String, duration: NanoInterval): Unit = {
@@ -62,12 +64,10 @@ class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfD
     val currentSegments = _allSegments.iterator()
     var segmentsInfo = List.newBuilder[SegmentInfo]
 
-    while (currentSegments.hasNext()) {
+    while (currentSegments.hasNext) {
       val segment = currentSegments.next()
-      if (segment.isClosed)
-        segmentsInfo += segment.createSegmentInfo(_startTimestamp, startTimestamp)
-      else
-        log.warning("Segment [{}] will be left out of TraceInfo because it was still open.", segment.name)
+      if (segment.isClosed) segmentsInfo += segment.createSegmentInfo(_startTimestamp, startTimestamp)
+      else if (log != null) log.warning("Segment will be left out of TraceInfo because it was still open.", segment.name)
     }
 
     TraceInfo(name, token, _startTimestamp, elapsedTime, _metadata.toMap, segmentsInfo.result())

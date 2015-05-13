@@ -8,6 +8,10 @@
     <weaver>
         <include within="*" />
 
+        <!-- exclude some actors -->
+        <exclude within="akka.event..*" />
+        <exclude within="kamon.zipkin.actor..*" />
+
         <!--  exclude some commons packages -->
         <exclude within="org..*" />
         <exclude within="ch.qos.logback..*" />

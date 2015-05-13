@@ -1,7 +1,6 @@
 package kamon.zipkin.instrumentation
 
 import akka.actor.{ ActorRef, Actor }
-import akka.pattern.PipeToSupport
 import kamon.Kamon
 import kamon.trace.{ LevelOfDetail, HierarchyConfig, Tracer }
 import kamon.zipkin.ZipkinConfig
@@ -17,10 +16,10 @@ class BaseZipkinInstrumentation {
   @Pointcut(value = "(!within(kamon..*) || within(kamon.zipkin.instrumentation..*))")
   def filterPointcut() {}
 
-  @Pointcut(value = "execution(* akka.actor.Actor.aroundReceive(..)) && filterPointcut() && args(receive,msg)", argNames = "receive,msg")
+  @Pointcut(value = "execution(* akka.actor.Actor.aroundReceive(..)) && filterPointcut() && args(receive,msg)")
   def aroundReceivePointcut(receive: Actor.Receive, msg: Any) {}
 
-  @Pointcut(value = "execution(* akka.pattern.PipeToSupport.PipeableFuture.pipeTo(..)) && filterPointcut() && args(recipient,sender)", argNames = "recipient,sender")
+  @Pointcut(value = "execution(* akka.pattern.PipeToSupport.PipeableFuture.pipeTo(..)) && filterPointcut() && args(recipient,sender)")
   def aroundPipeToPointcut(recipient: ActorRef, sender: ActorRef) {}
 
   @Around(value = "aroundReceivePointcut(receive,msg)", argNames = "pjp,receive,msg")
@@ -54,35 +53,26 @@ class BaseZipkinInstrumentation {
         // child.startSegment(msg.getClass.getSimpleName, ZipkinConfig.internalPrefix + "type", "ZipkinConfig").finish()
         pjp.proceed()
 
-        child.finish()
-
+        if (!child.metadata.contains(HierarchyConfig.future)) child.finish()
       }
     } else pjp.proceed()
 
   @Around(value = "aroundPipeToPointcut(recipient,sender)", argNames = "pjp,recipient,sender")
   def pipeToTracingAround(pjp: ProceedingJoinPoint, recipient: ActorRef, sender: ActorRef): Any = {
+    val currentContext = Tracer.currentContext
+    if (!currentContext.isEmpty) currentContext.addMetadata(HierarchyConfig.future, "future")
+
     val result = pjp.proceed()
     result match {
-      case exec: Future[Any] if !Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly ⇒
-        exec.onComplete { case _ ⇒ Tracer.currentContext.finish() }
+      case exec: Future[_] if !currentContext.isEmpty && currentContext.levelOfDetail != LevelOfDetail.MetricsOnly ⇒
+        exec onComplete { case _ ⇒ currentContext.finish() }
+        result
+      case _ if !currentContext.isEmpty && currentContext.levelOfDetail != LevelOfDetail.MetricsOnly ⇒
+        currentContext.finish()
+        result
       case _ ⇒
-    }
-    result
-  }
-
-  /*
-  @Around("execution (* *(..)) && !within(kamon..*) && !within(akka..*) && !within(scala..*) && within(tv.teads..*)")
-  def around(pjp: ProceedingJoinPoint): Any = {
-    if (Kamon(Zipkin).config.getBoolean("trace-methods") && !Tracer.currentContext.isEmpty && Tracer.currentContext.metadata.get(RemoteConfig.rootToken).nonEmpty) {
-      val ctx = Tracer.currentContext
-      val segment = ctx.startSegment(pjp.getSignature.getName, "", "")
-      val r = pjp.proceed()
-      segment.finish()
-      r
-    } else {
-      pjp.proceed()
+        result
     }
   }
-  */
 
 }
