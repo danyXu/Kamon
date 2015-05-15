@@ -33,20 +33,18 @@ abstract class EnableZipkinInstrumentation {
 
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
   def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
-    !Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly match {
-      case true ⇒
+    if(!Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
         val args = pjp.getArgs.foldLeft("") {
-          case (a, b) if a.isEmpty              ⇒ b.getClass.getSimpleName
-          case (a, b)                           ⇒ a + ", " + b.getClass.getSimpleName
+          case (a, b) if a.isEmpty ⇒ b.getClass.getSimpleName
+          case (a, b) ⇒ a + ", " + b.getClass.getSimpleName
           case (a, b) if a.isEmpty && b == null ⇒ "null"
-          case (a, b) if b == null              ⇒ a + ", null"
+          case (a, b) if b == null ⇒ a + ", null"
         }
         val txt = pjp.getSignature.getName + "(" + args + ")"
         val segment = Tracer.currentContext.startSegment(txt, "", "")
         val r = pjp.proceed()
         segment.finish()
         r
-      case false ⇒ pjp.proceed()
-    }
+    } else pjp.proceed()
 
 }

@@ -24,7 +24,7 @@ class BaseZipkinInstrumentation {
 
   @Around(value = "aroundReceivePointcut(receive,msg)", argNames = "pjp,receive,msg")
   def receiveTracingAround(pjp: ProceedingJoinPoint, receive: Actor.Receive, msg: Any): Unit =
-    if (!Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
+    if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
       val (rootToken: String, parentToken: String, parentClass: String, remote: Boolean) = Tracer.currentContext.token.split(HierarchyConfig.tokenSeparator) match {
         case Array(root, parentClassInstance, parent) ⇒ (root, parent, parentClassInstance, true)
         case Array(root, parent)                      ⇒ (root, parent, ZipkinConfig.rootName, true)

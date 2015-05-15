@@ -4,7 +4,7 @@ import kamon.Kamon
 import kamon.testkit.BaseKamonSpec
 import kamon.trace.{ TraceInfo, Tracer }
 
-class EnableZipkinExplicitInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instrumentation-spec") {
+class EnableZipkinExplicitInstrumentationSpec extends BaseKamonSpec("enable-zipkin-explicit-instrumentation-spec") {
 
   "the explicit instrumentation of zipkin" should {
 

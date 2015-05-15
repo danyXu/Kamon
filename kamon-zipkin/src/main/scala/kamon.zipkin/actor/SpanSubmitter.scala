@@ -53,9 +53,9 @@ class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor with ActorLo
         span.trace.metadata.get(ZipkinConfig.parentClass) match {
           case Some(parentInstance) ⇒ traceInstance.get(parentInstance) match {
             case Some(parentToken) ⇒ spans += (token -> span.copy(parentSpanId = parentToken))
-            case None              ⇒
+            case None              ⇒ spans
           }
-          case None ⇒
+          case None ⇒ spans
         }
     }
 

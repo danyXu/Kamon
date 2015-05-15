@@ -127,6 +127,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
       case _ ⇒
         traceName match {
           case _settings.filter(_*) if !_settings.sampler.shouldTrace ⇒ newMetricsOnlyContext(traceToken)
+          case _ if !isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1 ⇒ newMetricsOnlyContext(traceToken)
           case _ ⇒ new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext)
         }
     }

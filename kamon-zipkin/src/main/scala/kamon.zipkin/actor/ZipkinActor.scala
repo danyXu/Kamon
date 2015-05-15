@@ -9,8 +9,6 @@ import kamon.zipkin.models._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
-import scala.concurrent.duration._
-
 class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLogging {
 
   val tokenActors = TrieMap.empty[String, ActorRef]
@@ -28,9 +26,8 @@ class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLo
             case Some(tokenActor) ⇒
               tokenActor ! trace
           }
-        case None ⇒ log.warning(s"TraceInfo doesn't have a ${HierarchyConfig.rootToken}")
+        case None ⇒ log.warning(s"TraceInfo doesn't have the parameter ${HierarchyConfig.rootToken}")
       }
-    case query: ActorRef ⇒ query ! tokenActors.flatMap(a ⇒ List(a._1))
   }
 
 }
@@ -42,7 +39,7 @@ class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) 
   val traceSpan = TrieMap.empty[String, Span]
 
   override def preStart() =
-    system.scheduler.scheduleOnce(2000 millis, self, "end")
+    system.scheduler.scheduleOnce(config.scheduler, self, "end")
 
   def receive: Actor.Receive = {
     case trace: TraceInfo ⇒
@@ -50,7 +47,6 @@ class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) 
       traceSpan.put(trace.token, traceInfoToSpans(trace))
 
     // Send spans to Zipkin
-    // if (trace.token == rootToken || (remote && trace.metadata.getOrElse(ZipkinConfig.spanClass, "") == ZipkinConfig.endpointMarker)) {
     case "end" ⇒
       spansSubmitter ! new SpanBlock(traceSpan, rootToken, remote)
       context.become(emptyReceive)
