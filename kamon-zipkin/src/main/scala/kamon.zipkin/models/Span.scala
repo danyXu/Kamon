@@ -15,8 +15,6 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
     annotations: mutable.Map[String, String], parentSpanId: String = "", endpoint: thrift.Endpoint = Endpoint.createApplicationEndpoint("zipkin"),
     isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) {
 
-  override def toString: String = s"Span($spanId, $parentSpanId)"
-
   val otherSegments = ListBuffer.empty[SegmentInfo]
 
   def simpleSpan = {
@@ -24,9 +22,9 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
     var fullName = name
 
     val span = new thrift.Span()
-      .set_trace_id(longHash(traceId))
-      .set_id(longHash(spanId))
-      .set_parent_id(longHash(parentSpanId))
+      .set_trace_id(ZipkinHasher.longHash(traceId))
+      .set_id(ZipkinHasher.longHash(spanId))
+      .set_parent_id(ZipkinHasher.longHash(parentSpanId))
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
     trace.segments.filter(s ⇒ filterSegments(s)).foreach {
@@ -86,8 +84,15 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
     val duration = TimestampConverter.durationToMicros(s.elapsedTime).toInt
     duration == 0 || duration > Kamon(Zipkin).config.recordMinDuration
   }
+}
 
-  private def longHash(string: String): Long = {
+object TimestampConverter {
+  def timestampToMicros(nano: NanoTimestamp) = nano.nanos / 1000
+  def durationToMicros(nano: NanoInterval) = nano.nanos / 1000
+}
+
+object ZipkinHasher {
+  def longHash(string: String): Long = {
     string.isEmpty match {
       case true ⇒ 0L
       case false ⇒
@@ -99,9 +104,4 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
   }
 }
 
-object TimestampConverter {
-  def timestampToMicros(nano: NanoTimestamp) = nano.nanos / 1000
-  def durationToMicros(nano: NanoInterval) = nano.nanos / 1000
-}
-
-case class SpanBlock(spans: mutable.Map[String, Span], rootToken: String, remote: Boolean)
+case class SpanBlock(spans: mutable.Map[String, Span], rootToken: String, remote: Boolean = false)

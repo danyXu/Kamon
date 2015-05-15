@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 
 import com.github.levkhomich.akka.tracing.thrift
 import kamon.testkit.BaseKamonSpec
-import kamon.trace.{ TraceInfo, SegmentInfo }
+import kamon.trace.{ HierarchyConfig, TraceInfo, SegmentInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
 import kamon.zipkin.ZipkinConfig
 
@@ -26,9 +26,9 @@ class ModelsSpec extends BaseKamonSpec("zipkin-models-spec") {
 
     "create a Span correctly" in new SpanTest {
       val s = new thrift.Span()
-        .set_trace_id(0L)
-        .set_id(0L)
-        .set_parent_id(0L)
+        .set_trace_id(ZipkinHasher.longHash(traceId))
+        .set_id(ZipkinHasher.longHash(spanId))
+        .set_parent_id(ZipkinHasher.longHash(parentSpanId))
         .set_name(spanName)
 
       val sa = new thrift.Annotation(spanStart, thrift.zipkinConstants.SERVER_RECV).set_host(endpoint)
@@ -41,37 +41,45 @@ class ModelsSpec extends BaseKamonSpec("zipkin-models-spec") {
       s.add_to_annotations(end)
       s.add_to_annotations(ea)
 
-      s should be(span)
+      s should be(simpleSpan)
+    }
+
+    "create long hashes correctly" in {
+      ZipkinHasher.longHash("") should be(0L)
+      ZipkinHasher.longHash("a") should be(ZipkinHasher.longHash("a"))
+      ZipkinHasher.longHash("b") should not be ZipkinHasher.longHash("a")
     }
 
   }
 
-  trait EndpointTest {
-    val service = "test"
-    val host = "localhost"
-    val port = 8000
+}
 
-    val endpoint = Endpoint.createEndpoint(service, host, port)
-  }
+trait EndpointTest {
+  val service = "test"
+  val host = "localhost"
+  val port = 8000
 
-  trait TraceInfoTest {
-    val traceName = "traceName"
-    val traceToken = "traceToken"
-    val traceStart = NanoTimestamp.now
-    val traceDuration = NanoInterval.default
+  val endpoint = Endpoint.createEndpoint(service, host, port)
+}
 
-    val trace = TraceInfo(traceName, traceToken, traceStart, traceDuration, Map[String, String](), List[SegmentInfo]())
-  }
+trait TraceInfoTest {
+  val traceName = "traceName"
+  val traceToken = "traceToken"
+  val traceStart = NanoTimestamp.now
+  val traceDuration = NanoInterval.default
+  val metadata = Map[String, String](HierarchyConfig.rootToken -> "root")
 
-  trait SpanTest extends TraceInfoTest with EndpointTest {
-    val traceId = ""
-    val spanId = ""
-    val parentSpanId = ""
-    val spanName = "spanName"
-    val spanStart = NanoTimestamp.now.nanos
-    val spanDuration = NanoInterval.default.nanos
+  val trace = TraceInfo(traceName, traceToken, traceStart, traceDuration, metadata, List[SegmentInfo]())
+}
 
-    val span = new Span(trace, traceId, spanId, spanName, spanStart, spanDuration, mutable.Map[String, String](), parentSpanId, endpoint).simpleSpan
-  }
+trait SpanTest extends TraceInfoTest with EndpointTest {
+  val traceId = traceToken
+  val spanId = traceToken
+  val parentSpanId = traceToken
+  val spanName = "spanName"
+  val spanStart = NanoTimestamp.now.nanos
+  val spanDuration = NanoInterval.default.nanos
 
+  val span = new Span(trace, traceId, spanId, spanName, spanStart, spanDuration, mutable.Map[String, String](), parentSpanId, endpoint)
+  val simpleSpan = span.simpleSpan
 }

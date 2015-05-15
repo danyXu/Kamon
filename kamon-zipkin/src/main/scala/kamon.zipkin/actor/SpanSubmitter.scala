@@ -10,52 +10,51 @@ import kamon.zipkin.models.{ Span, SpanBlock }
 import scala.collection.mutable
 
 /*
- * This actor is used to submit spans to akka-tracing @ https://github.com/levkhomich/akka-tracing
- * It could be "improved" to directly submit spans to Zipkin without having to use a library
+ * This actor submits spans to Zipkin using akka-tracing library @ https://github.com/levkhomich/akka-tracing
  */
-class SpanSubmitter(tracingExt: TracingExtensionImpl) extends Actor with ActorLogging {
+class SpanSubmitter(tracingExt: Option[TracingExtensionImpl] = None) extends Actor with ActorLogging {
 
   def receive: Actor.Receive = {
+    case spanBlock: SpanBlock if tracingExt.isEmpty ⇒
+      sender() ! buildHierarchy(spanBlock.spans)
     case spanBlock: SpanBlock ⇒
       val spans = spanBlock.spans
-      if (spanBlock.remote || spans.contains(spanBlock.rootToken)) tracingExt.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
+      if (spanBlock.remote || spans.contains(spanBlock.rootToken)) tracingExt.get.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
   }
 
   private def buildHierarchy(spans: mutable.Map[String, Span]): Map[String, Span] = {
     val traceInstance = mutable.Map.empty[String, String]
 
+    // Merge spans which have the same instance
     spans.toSeq.sortBy(_._2.trace.timestamp.nanos).foreach {
       case (token, span) ⇒
         val trace = span.trace
         val instance = trace.metadata.getOrElse(HierarchyConfig.spanUniqueClass, "")
 
         traceInstance.get(instance) match {
-          case Some(instanceToken) ⇒ spans.get(instanceToken) match {
-            case Some(realSpan) ⇒
-              realSpan.addToRecords(
-                ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-                new NanoTimestamp(trace.timestamp.nanos))
-              realSpan.addToRecords(
-                ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
-                new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
-              realSpan.addSegments(trace.segments)
+          case Some(instanceToken) ⇒ spans.get(instanceToken).foreach { realSpan ⇒
+            realSpan.addToRecords(
+              ZipkinConfig.segmentBegin + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+              new NanoTimestamp(trace.timestamp.nanos))
+            realSpan.addToRecords(
+              ZipkinConfig.segmentEnd + trace.metadata.getOrElse(ZipkinConfig.spanType, "unknown"),
+              new NanoTimestamp(trace.timestamp.nanos + trace.elapsedTime.nanos))
+            realSpan.addSegments(trace.segments)
 
-              spans += (instanceToken -> realSpan)
-              spans -= token
-            case None ⇒
+            spans += (instanceToken -> realSpan)
+            spans -= token
           }
           case None ⇒ traceInstance += (instance -> token)
         }
     }
 
+    // Edit parentToken of spans whose parent was merged
     spans.toSeq.sortBy(_._2.trace.timestamp.nanos).foreach {
       case (token, span) ⇒
-        span.trace.metadata.get(ZipkinConfig.parentClass) match {
-          case Some(parentInstance) ⇒ traceInstance.get(parentInstance) match {
-            case Some(parentToken) ⇒ spans += (token -> span.copy(parentSpanId = parentToken))
-            case None              ⇒ spans
+        span.trace.metadata.get(ZipkinConfig.parentClass).foreach { parentInstance ⇒
+          traceInstance.get(parentInstance).foreach { parentToken ⇒
+            spans += (token -> span.copy(parentSpanId = parentToken))
           }
-          case None ⇒ spans
         }
     }
 
