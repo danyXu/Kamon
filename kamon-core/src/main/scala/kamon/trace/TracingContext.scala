@@ -24,7 +24,7 @@ import kamon.util.{ NanoInterval, RelativeNanoTimestamp, NanoTimestamp }
 
 import scala.collection.concurrent.TrieMap
 
-class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfDetail: LevelOfDetail,
+private[trace] class TracingContext(traceName: String, token: String, izOpen: Boolean, levelOfDetail: LevelOfDetail,
   isLocal: Boolean, startTimeztamp: RelativeNanoTimestamp, log: LoggingAdapter, traceInfoSink: TracingContext ⇒ Unit)
     extends MetricsOnlyContext(traceName, token, izOpen, levelOfDetail, startTimeztamp, log) {
 
