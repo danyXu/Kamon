@@ -19,6 +19,7 @@ import akka.actor._
 import akka.event.Logging
 import com.github.levkhomich.akka.tracing.TracingExtension
 import kamon.Kamon
+import kamon.trace.TraceSettings
 import kamon.zipkin.actor.{ ZipkinActorSupervisor, SpanSubmitter }
 
 object Zipkin extends ExtensionId[ZipkinExtension] with ExtensionIdProvider {
@@ -33,7 +34,7 @@ class ZipkinExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   val trace = TracingExtension(system)
   val config = new ZipkinConfig(system.settings.config)
 
-  val spansSubmitter = system.actorOf(Props(new SpanSubmitter(Some(trace))))
+  val spansSubmitter = system.actorOf(Props(new SpanSubmitter(TraceSettings(system.settings.config), Some(trace))))
   val zipkinActor = system.actorOf(Props(new ZipkinActorSupervisor(spansSubmitter)))
   Kamon.tracer.subscribe(zipkinActor)
 }

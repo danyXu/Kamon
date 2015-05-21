@@ -18,7 +18,6 @@ package kamon.trace
 
 import kamon.util.ConfigTools.Syntax
 import com.typesafe.config.Config
-import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 
 case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String, filter: Regex)
@@ -38,7 +37,7 @@ object TraceSettings {
       else tracerConfig.getString("sampling") match {
         case "all"       ⇒ SampleAll
         case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
-        case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.interval"))
+        case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
         case "threshold" ⇒ new ThresholdSampler(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)
       }
 

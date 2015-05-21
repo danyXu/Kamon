@@ -17,10 +17,16 @@ package kamon.trace.logging
 
 import ch.qos.logback.classic.pattern.ClassicConverter
 import ch.qos.logback.classic.spi.ILoggingEvent
-import kamon.trace.Tracer
+import kamon.trace.{ HierarchyConfig, Tracer }
 
 class LogbackTraceTokenConverter extends ClassicConverter {
 
-  def convert(event: ILoggingEvent): String =
-    Tracer.currentContext.collect(_.token).getOrElse("NoTraceContext")
+  def convert(event: ILoggingEvent): String = {
+    val current = Tracer.currentContext
+    current.metadata.get(HierarchyConfig.rootToken) match {
+      case Some(rootToken) ⇒ rootToken
+      case None            ⇒ current.collect(_.token).getOrElse("NoTraceContext")
+    }
+  }
+
 }

@@ -16,9 +16,9 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
     isClient: Boolean = false, records: mutable.Map[String, NanoTimestamp] = mutable.Map[String, NanoTimestamp]()) {
 
   val otherSegments = ListBuffer.empty[SegmentInfo]
+  var realDuration = duration
 
   def simpleSpan = {
-    var maxTimestamp = start + duration
     var fullName = name
 
     val span = new thrift.Span()
@@ -41,8 +41,8 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
       case (k, v) if k.startsWith(ZipkinConfig.segmentBegin) ⇒
         fullName += " - " + k.stripPrefix(ZipkinConfig.segmentBegin)
         span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
-      case (k, v) if k.startsWith(ZipkinConfig.segmentEnd) && (TimestampConverter.timestampToMicros(v) > maxTimestamp) ⇒
-        maxTimestamp = TimestampConverter.timestampToMicros(v)
+      case (k, v) if k.startsWith(ZipkinConfig.segmentEnd) && (TimestampConverter.timestampToMicros(v) > start + realDuration) ⇒
+        realDuration = TimestampConverter.timestampToMicros(v) - start
         span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
       case (k, v) ⇒
         span.add_to_annotations(timestampAnnotation(k, v, NanoInterval.default))
@@ -51,7 +51,7 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
     span.set_name(fullName)
 
     val sa = new thrift.Annotation(start, if (isClient) thrift.zipkinConstants.CLIENT_SEND else thrift.zipkinConstants.SERVER_RECV).set_host(endpoint)
-    val ea = new thrift.Annotation(maxTimestamp, if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND).set_host(sa.get_host())
+    val ea = new thrift.Annotation(start + realDuration, if (isClient) thrift.zipkinConstants.CLIENT_RECV else thrift.zipkinConstants.SERVER_SEND).set_host(sa.get_host())
 
     val begin = new thrift.Annotation(start, ZipkinConfig.segmentBegin + name)
     val end = new thrift.Annotation(start + duration, ZipkinConfig.segmentEnd + name)
@@ -67,6 +67,8 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
   def addToAnnotations(key: String, value: String) = annotations += (key -> value)
   def addToRecords(key: String, value: NanoTimestamp) = records += (key -> value)
   def addSegments(newSegments: List[SegmentInfo]) = otherSegments ++= newSegments
+
+  def getNanoDuration = new NanoInterval(realDuration * 1000)
 
   private def stringAnnotation(key: String, value: String) = {
     val a = new thrift.BinaryAnnotation()

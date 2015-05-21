@@ -196,13 +196,13 @@ object Projects extends Build {
           provided(aspectJ))
 
   lazy val kamonZipkin = Project("kamon-zipkin", file("kamon-zipkin"))
-    .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka)
+    .dependsOn(kamonCore % "compile->compile;test->test", kamonAkka, kamonAkkaRemote)
     .settings(basicSettings: _*)
     .settings(formatSettings: _*)
     .settings(aspectJSettings: _*)
     .settings(
       libraryDependencies ++=
-        compile(akkaActor, akkaTracing) ++
+        compile(akkaActor, akkaTracing, akkaRemote) ++
           test(scalatest, akkaTestKit) ++
           provided(aspectJ))
 
