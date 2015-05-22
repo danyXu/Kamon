@@ -103,7 +103,12 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   private val _incubator = new LazyActorRef
 
   private def newToken: String =
-    _settings.token + _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet()) + NanoTimestamp.now.nanos
+    _settings.levelOfDetail match {
+      case LevelOfDetail.MetricsOnly ⇒
+        _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet())
+      case _ ⇒
+        _settings.token + _hostnamePrefix + "-" + String.valueOf(_tokenCounter.incrementAndGet()) + NanoTimestamp.now.nanos
+    }
 
   def newContext(name: String): TraceContext =
     createTraceContext(name, None)
@@ -126,9 +131,12 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
       case LevelOfDetail.MetricsOnly ⇒ newMetricsOnlyContext(traceToken)
       case _ ⇒
         traceName match {
-          case _settings.filter(_*) if !_settings.sampler.shouldTrace ⇒ newMetricsOnlyContext(traceToken)
-          case _ if !isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1 ⇒ newMetricsOnlyContext(traceToken)
-          case _ ⇒ new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext(isLocal))
+          case _settings.filter(_*) if !_settings.sampler.shouldTrace ⇒
+            newMetricsOnlyContext(traceToken)
+          case _ if !isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1 ⇒
+            newMetricsOnlyContext(traceToken)
+          case _ ⇒
+            new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext(isLocal))
         }
     }
   }

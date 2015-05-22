@@ -45,7 +45,13 @@ abstract class EnableZipkinInstrumentation {
       }
       val txt = pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
 
-      Tracer.currentContext.withNewSegment(txt, "zipkin", "kamon") { pjp.proceed() }
+      val segment = Tracer.currentContext.startSegment(txt, "zipkin", "kamon")
+      try {
+        pjp.proceed()
+      } finally {
+        segment.finish()
+      }
+
     } else pjp.proceed()
 
 }
