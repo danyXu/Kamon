@@ -36,7 +36,7 @@ class BaseZipkinInstrumentation {
         }
       }
 
-      Tracer.withContext(Kamon.tracer.newContext(msg.getClass.getSimpleName)) {
+      Tracer.withContext(Kamon.tracer.newChildContext(msg.getClass.getSimpleName)) {
         val child = Tracer.currentContext
         child.startTimestamp
 

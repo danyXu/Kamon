@@ -26,9 +26,11 @@ case class Span(trace: TraceInfo, traceId: String, spanId: String, name: String,
       .set_id(ZipkinHasher.longHash(spanId))
       .set_parent_id(ZipkinHasher.longHash(parentSpanId))
 
+    /*
     span.add_to_binary_annotations(stringAnnotation("root", traceId))
     span.add_to_binary_annotations(stringAnnotation("token", spanId))
     span.add_to_binary_annotations(stringAnnotation("parent", parentSpanId))
+    */
 
     annotations.foreach { case (k, v) ⇒ span.add_to_binary_annotations(stringAnnotation(k, v)) }
 

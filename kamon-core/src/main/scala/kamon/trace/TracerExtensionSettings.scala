@@ -20,7 +20,7 @@ import kamon.util.ConfigTools.Syntax
 import com.typesafe.config.Config
 import scala.util.matching.Regex
 
-case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String, filter: Regex)
+case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String)
 
 object TraceSettings {
   def apply(config: Config): TraceSettings = {
@@ -39,12 +39,11 @@ object TraceSettings {
         case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
         case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
         case "threshold" ⇒ new ThresholdSampler(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)
+        case "clock"     ⇒ new ClockSampler(tracerConfig.getFiniteDuration("clock-sampler.pause").toNanos)
       }
 
     val token: String = tracerConfig.getString("token-name")
 
-    val filter: Regex = tracerConfig.getString("filter").r
-
-    TraceSettings(detailLevel, sampler, token, filter)
+    TraceSettings(detailLevel, sampler, token)
   }
 }

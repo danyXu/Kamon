@@ -36,7 +36,6 @@ class SpanSubmitterSpec extends BaseKamonSpec("zipkin-actor-spec") {
           |      minimum-elapsed-time = 500 ms
           |    }
           |    token-name = ""
-          |    filter = ".*"
           |  }
           |}
         """.stripMargin)
@@ -61,7 +60,6 @@ class SpanSubmitterSpec extends BaseKamonSpec("zipkin-actor-spec") {
           |      minimum-elapsed-time = 500 ms
           |    }
           |    token-name = ""
-          |    filter = ".*"
           |  }
           |}
         """.stripMargin)

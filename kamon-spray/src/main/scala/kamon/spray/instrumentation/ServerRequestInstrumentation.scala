@@ -96,7 +96,8 @@ class ServerRequestInstrumentation {
 
   def verifyTraceContextConsistency(incomingTraceContext: TraceContext, storedTraceContext: TraceContext): Unit = {
     def publishWarning(text: String): Unit =
-      Kamon(Spray).log.warning(text)
+      if (Kamon(Spray).log.isWarningEnabled)
+        Kamon(Spray).log.warning(text)
 
     if (incomingTraceContext.nonEmpty) {
       if (incomingTraceContext.token.split(HierarchyConfig.tokenSeparator).head != storedTraceContext.token

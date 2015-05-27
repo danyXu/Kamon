@@ -31,6 +31,8 @@ trait TracerModule {
   def newContext(name: String): TraceContext
   def newContext(name: String, token: Option[String]): TraceContext
   def newContext(name: String, token: Option[String], timestamp: RelativeNanoTimestamp, isOpen: Boolean, isLocal: Boolean): TraceContext
+  def newChildContext(name: String): TraceContext
+  def newChildContext(name: String, token: Option[String]): TraceContext
 
   def subscribe(subscriber: ActorRef): Unit
   def unsubscribe(subscriber: ActorRef): Unit
@@ -111,7 +113,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     }
 
   def newContext(name: String): TraceContext =
-    createTraceContext(name, None)
+    createTraceContext(name)
 
   def newContext(name: String, token: Option[String]): TraceContext =
     createTraceContext(name, token)
@@ -119,8 +121,14 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
   def newContext(name: String, token: Option[String], timestamp: RelativeNanoTimestamp, isOpen: Boolean, isLocal: Boolean): TraceContext =
     createTraceContext(name, token, timestamp, isOpen, isLocal)
 
-  private def createTraceContext(traceName: String, token: Option[String], startTimestamp: RelativeNanoTimestamp = RelativeNanoTimestamp.now,
-    isOpen: Boolean = true, isLocal: Boolean = true): TraceContext = {
+  def newChildContext(name: String): TraceContext =
+    createTraceContext(name, isChild = true)
+
+  def newChildContext(name: String, token: Option[String]): TraceContext =
+    createTraceContext(name, token, isChild = true)
+
+  private def createTraceContext(traceName: String, token: Option[String] = None, startTimestamp: RelativeNanoTimestamp = RelativeNanoTimestamp.now,
+    isOpen: Boolean = true, isLocal: Boolean = true, isChild: Boolean = false): TraceContext = {
 
     def newMetricsOnlyContext(token: String): TraceContext =
       new MetricsOnlyContext(traceName, token, isOpen, LevelOfDetail.MetricsOnly, startTimestamp, null)
@@ -128,16 +136,14 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     val traceToken = token.getOrElse(newToken)
 
     _settings.levelOfDetail match {
-      case LevelOfDetail.MetricsOnly ⇒ newMetricsOnlyContext(traceToken)
+      case LevelOfDetail.MetricsOnly ⇒
+        newMetricsOnlyContext(traceToken)
       case _ ⇒
-        traceName match {
-          case _settings.filter(_*) if !_settings.sampler.shouldTrace ⇒
-            newMetricsOnlyContext(traceToken)
-          case _ if !isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1 ⇒
-            newMetricsOnlyContext(traceToken)
-          case _ ⇒
-            new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext(isLocal))
-        }
+        if ((isLocal && !isChild && !_settings.sampler.shouldTrace)
+          || (!isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1))
+          newMetricsOnlyContext(traceToken)
+        else
+          new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, null, dispatchTracingContext(isLocal))
     }
   }
 

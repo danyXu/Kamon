@@ -16,7 +16,7 @@
 
 package kamon.trace
 
-import kamon.util.{ NanoInterval, Sequencer }
+import kamon.util.{ NanoTimestamp, NanoInterval, Sequencer }
 import scala.concurrent.forkjoin.ThreadLocalRandom
 
 trait Sampler {
@@ -69,5 +69,19 @@ class ThresholdSampler(thresholdInNanoseconds: Long) extends Sampler {
 
   def shouldTrace: Boolean = true
   def shouldReport(traceElapsedTime: NanoInterval): Boolean = traceElapsedTime.nanos >= thresholdInNanoseconds
+}
+
+class ClockSampler(pauseInNanoseconds: Long) extends Sampler {
+  require(pauseInNanoseconds > 0, "kamon.trace.clock-sampler.pause cannot be <= 0")
+
+  private var timer = 0L
+
+  def shouldTrace: Boolean = {
+    val now = NanoTimestamp.now.nanos
+    val result = now >= (timer + pauseInNanoseconds)
+    if (result) timer = now
+    result
+  }
+  def shouldReport(traceElapsedTime: NanoInterval): Boolean = true
 }
 

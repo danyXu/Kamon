@@ -85,7 +85,7 @@ class DefaultNameGenerator extends NameGenerator {
 
 }
 
-class OldNameGenerator extends DefaultNameGenerator {
+class RequestNameGenerator extends DefaultNameGenerator {
   override def generateTraceName(request: HttpRequest): String =
     request.method.value + ": " + request.uri.path
 }
