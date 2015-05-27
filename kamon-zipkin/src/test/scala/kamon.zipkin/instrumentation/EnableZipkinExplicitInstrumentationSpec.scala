@@ -6,7 +6,7 @@ import kamon.trace.{ TraceInfo, Tracer }
 
 class EnableZipkinExplicitInstrumentationSpec extends BaseKamonSpec("enable-zipkin-explicit-instrumentation-spec") {
 
-  "the explicit instrumentation of zipkin" should {
+  "The explicit instrumentation of zipkin" should {
 
     "log execution of methods explicitly added to aop.xml file" in {
       Kamon.tracer.subscribe(testActor)

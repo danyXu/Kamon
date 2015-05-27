@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 class ModelsSpec extends BaseKamonSpec("zipkin-models-spec") {
 
-  "the models classes" should {
+  "The models classes" should {
 
     "create an Endpoint correctly" in new EndpointTest {
       val e = new thrift.Endpoint()

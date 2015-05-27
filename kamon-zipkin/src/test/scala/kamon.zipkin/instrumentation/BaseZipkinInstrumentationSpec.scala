@@ -6,7 +6,7 @@ import kamon.trace.{ HierarchyConfig, Tracer }
 
 class BaseZipkinInstrumentationSpec extends BaseKamonSpec("base-zipkin-instrumentation-spec") {
 
-  "the base instrumentation of zipkin" should {
+  "The base instrumentation of zipkin" should {
 
     "not do anything if there is no TraceContext when an actor receive a message" in new ZipkinActorFixture {
       zipkinActor ! Tracer.currentContext.token

@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 
 class SpanSubmitterSpec extends BaseKamonSpec("zipkin-actor-spec") {
 
-  "the span submitter" should {
+  "The span submitter" should {
 
     "submit spans correctly in normal mode" in new SpanTest {
       val spanSubmitter = TestActorRef(new SpanSubmitter(TraceSettings(system.settings.config)))

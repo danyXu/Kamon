@@ -13,7 +13,7 @@ class ZipkinActorSpec extends BaseKamonSpec("zipkin-actor-spec") {
 
   lazy val zipkinConfig = new ZipkinConfig(system.settings.config)
 
-  "the zipkin actor system" should {
+  "The zipkin actor system" should {
 
     "return a SpanBlock when the delay has been reached" in new TraceInfoTest {
       val prob = TestProbe()
