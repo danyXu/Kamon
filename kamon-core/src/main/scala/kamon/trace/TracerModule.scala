@@ -20,6 +20,7 @@ import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor._
+import akka.event.{Logging, LoggingAdapter}
 import com.typesafe.config.Config
 import kamon.Kamon
 import kamon.metric.MetricsModule
@@ -131,7 +132,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     isOpen: Boolean = true, isLocal: Boolean = true, isChild: Boolean = false): TraceContext = {
 
     def newMetricsOnlyContext(token: String): TraceContext =
-      new MetricsOnlyContext(traceName, token, isOpen, LevelOfDetail.MetricsOnly, startTimestamp, null)
+      new MetricsOnlyContext(traceName, token, isOpen, _settings.levelOfDetail, startTimestamp, null)
 
     val traceToken = token.getOrElse(newToken)
 

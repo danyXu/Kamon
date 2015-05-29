@@ -17,12 +17,12 @@ class BaseZipkinInstrumentation {
   def filterPointcut() {}
 
   @Pointcut(value = "execution(* akka.actor.Actor.aroundReceive(..)) && filterPointcut() && args(receive,msg)")
-  def aroundReceivePointcut(receive: Actor.Receive, msg: Any) {}
+  def receivePointcut(receive: Actor.Receive, msg: Any) {}
 
   @Pointcut(value = "execution(* akka.pattern.PipeToSupport.PipeableFuture.pipeTo(..)) && filterPointcut() && args(recipient,sender)")
-  def aroundPipeToPointcut(recipient: ActorRef, sender: ActorRef) {}
+  def pipeToPointcut(recipient: ActorRef, sender: ActorRef) {}
 
-  @Around(value = "aroundReceivePointcut(receive,msg)", argNames = "pjp,receive,msg")
+  @Around(value = "receivePointcut(receive,msg)", argNames = "pjp,receive,msg")
   def receiveTracingAround(pjp: ProceedingJoinPoint, receive: Actor.Receive, msg: Any): Unit =
     if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
       val (rootToken: String, parentToken: String, parentClass: String, remote: Boolean) = Tracer.currentContext.token.split(HierarchyConfig.tokenSeparator) match {
@@ -57,7 +57,7 @@ class BaseZipkinInstrumentation {
       }
     } else pjp.proceed()
 
-  @Around(value = "aroundPipeToPointcut(recipient,sender)", argNames = "pjp,recipient,sender")
+  @Around(value = "pipeToPointcut(recipient,sender)", argNames = "pjp,recipient,sender")
   def pipeToTracingAround(pjp: ProceedingJoinPoint, recipient: ActorRef, sender: ActorRef): Any = {
     val currentContext = Tracer.currentContext
     if (!currentContext.isEmpty) currentContext.addMetadata(HierarchyConfig.future, "future")

@@ -3,6 +3,7 @@ package kamon.zipkin.instrumentation
 import kamon.trace.{ LevelOfDetail, Tracer }
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{ Aspect, Pointcut, Around }
+import org.aspectj.lang.reflect.MethodSignature
 
 @Aspect
 abstract class EnableZipkinInstrumentation {
@@ -31,7 +32,7 @@ abstract class EnableZipkinInstrumentation {
 
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
   def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
-    if (!Tracer.currentContext.isEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
+    if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
       /*
       val args = pjp.getArgs.foldLeft(Map.empty[String, String]) {
         case (map, element) if element == null => map + ("null" -> "null")
@@ -45,11 +46,15 @@ abstract class EnableZipkinInstrumentation {
       }
       val txt = pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
 
-      val segment = Tracer.currentContext.startSegment(txt, "zipkin", "kamon")
-      try {
-        pjp.proceed()
-      } finally {
-        segment.finish()
+      pjp.getSignature.asInstanceOf[MethodSignature].getReturnType.toString match {
+        case "interface scala.concurrent.Future" ⇒
+          Tracer.currentContext.withNewAsyncSegment(txt, "zipkin", "kamon") {
+            pjp.proceed().asInstanceOf[scala.concurrent.Future[Any]]
+          }
+        case _ ⇒
+          Tracer.currentContext.withNewSegment(txt, "zipkin", "kamon") {
+            pjp.proceed()
+          }
       }
 
     } else pjp.proceed()
