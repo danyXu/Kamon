@@ -1,4 +1,4 @@
-FROM elyrixia/zipkin-base
+FROM elyrixia/zipkin-base:master
 MAINTAINER Elyrixia "https://github.com/Elyrixia"
 
 ADD query-redis.scala /zipkin/zipkin-query-service/config/query-redis.scala

@@ -1,4 +1,4 @@
-FROM elyrixia/zipkin-base
+FROM elyrixia/zipkin-base:master
 MAINTAINER Elyrixia "https://github.com/Elyrixia"
 
 ADD Main.scala /zipkin/zipkin-web/src/main/scala/com/twitter/zipkin/web/Main.scala
