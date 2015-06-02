@@ -44,7 +44,7 @@ abstract class EnableZipkinInstrumentation {
         case (list, arg) if arg == null ⇒ list :+ "null"
         case (list, arg)                ⇒ list :+ arg.getClass.getSimpleName
       }
-      val txt = pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
+      val txt = new StringBuilder("- ") * Tracer.currentContext.segmentsCount + pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
 
       pjp.getSignature.asInstanceOf[MethodSignature].getReturnType.toString match {
         case "interface scala.concurrent.Future" ⇒

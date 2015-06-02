@@ -36,6 +36,8 @@ private[trace] class TracingContext(traceName: String, token: String, izOpen: Bo
   override def addMetadata(key: String, value: String): Unit = _metadata.put(key, value)
   override def metadata: Map[String, String] = _metadata.toMap
 
+  override def segmentsCount: Int = _openSegments.get()
+
   override def startSegment(segmentName: String, category: String, library: String): Segment = {
     _openSegments.incrementAndGet()
     val newSegment = new TracingSegment(segmentName, category, library)

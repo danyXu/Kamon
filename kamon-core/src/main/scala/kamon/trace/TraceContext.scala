@@ -32,6 +32,7 @@ trait TraceContext {
   def isClosed: Boolean = !isOpen
   def metadata: Map[String, String]
   def levelOfDetail: LevelOfDetail
+  def segmentsCount: Int
 
   def finish(): Unit
   def rename(newName: String): Unit
@@ -90,6 +91,7 @@ case object EmptyTraceContext extends TraceContext {
   def isOpen: Boolean = false
   def metadata = Map.empty[String, String]
   def levelOfDetail: LevelOfDetail = LevelOfDetail.MetricsOnly
+  def segmentsCount: Int = 0
 
   def finish(): Unit = {}
   def rename(name: String): Unit = {}
