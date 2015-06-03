@@ -46,6 +46,7 @@ object Dependencies {
   val akkaTestKit       = "com.typesafe.akka"         %%  "akka-testkit"          % akkaVersion
   val akkaRemote        = "com.typesafe.akka"         %%  "akka-remote"           % akkaVersion
   val akkaCluster       = "com.typesafe.akka"         %%  "akka-cluster"          % akkaVersion
+  val akkaStream        = "com.typesafe.akka"         %% "akka-stream-experimental" % "1.0-M4"
   val play              = "com.typesafe.play"         %%  "play"                  % playVersion
   val playWS            = "com.typesafe.play"         %%  "play-ws"               % playVersion
   val playTest          = "org.scalatestplus"         %%  "play"                  % "1.2.0"
@@ -57,7 +58,7 @@ object Dependencies {
   val sigarLoader       = "io.kamon"                  %   "sigar-loader"          % "1.6.5-rev001"
   val h2                = "com.h2database"            %   "h2"                    % "1.4.182"
   val el                = "org.glassfish"             %   "javax.el"              % "3.0.0"
-  val akkaTracing       = "com.github.elyrixia"       %%  "akka-tracing-core"     % "0.5-SNAPSHOT"
+  val libThrift         = "org.apache.thrift"         %   "libthrift"             % "0.9.2"
 
   def compile   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "compile")
   def provided  (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "provided")

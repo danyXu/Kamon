@@ -29,7 +29,7 @@ To use Zipkin, you can :
 
 ### Flow of a trace in the extension
 
-![KamonZipkin basic flow](images/KamonBasic.png)
+![Kamon-Zipkin basic flow](images/KamonBasic.png)
 
 Kamon creates for each request an unique TraceContext. This TraceContext is created when the request is processed by Spray and ends when the request has been completed.  
 
@@ -48,3 +48,8 @@ Two pointcuts are used to trace requests in an application :
 ### Some results
 
 SAFE EXAMPLES
+
+### Contributions
+
+I used part of the nice library akka-tracing @ https://github.com/levkhomich/akka-tracing to submit Spans to Zipkin.
+This work began after reading the discussion @ https://groups.google.com/forum/#!msg/kamon-user/W9ykRBmKTOo/6rTRKOOiXiEJ.

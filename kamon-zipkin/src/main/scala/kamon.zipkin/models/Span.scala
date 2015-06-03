@@ -2,10 +2,10 @@ package kamon.zipkin.models
 
 import java.nio.ByteBuffer
 
-import com.github.levkhomich.akka.tracing.thrift
 import kamon.Kamon
 import kamon.trace.{ SegmentInfo, TraceInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }
+import kamon.zipkin.thrift
 import kamon.zipkin.{ Zipkin, ZipkinConfig }
 
 import scala.collection.mutable

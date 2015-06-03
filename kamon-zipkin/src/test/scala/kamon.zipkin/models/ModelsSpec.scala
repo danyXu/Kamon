@@ -3,7 +3,7 @@ package kamon.zipkin.models
 import java.net.InetAddress
 import java.nio.ByteBuffer
 
-import com.github.levkhomich.akka.tracing.thrift
+import kamon.zipkin.thrift
 import kamon.testkit.BaseKamonSpec
 import kamon.trace.{ HierarchyConfig, TraceInfo, SegmentInfo }
 import kamon.util.{ NanoInterval, NanoTimestamp }

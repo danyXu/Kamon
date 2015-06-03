@@ -202,7 +202,7 @@ object Projects extends Build {
     .settings(aspectJSettings: _*)
     .settings(
       libraryDependencies ++=
-        compile(akkaActor, akkaTracing, akkaRemote) ++
+        compile(akkaActor, akkaRemote, akkaStream, libThrift) ++
           test(scalatest, akkaTestKit) ++
           provided(aspectJ))
 

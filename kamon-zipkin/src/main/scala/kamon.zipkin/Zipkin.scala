@@ -17,10 +17,10 @@ package kamon.zipkin
 
 import akka.actor._
 import akka.event.Logging
-import com.github.levkhomich.akka.tracing.TracingExtension
 import kamon.Kamon
 import kamon.trace.TraceSettings
 import kamon.zipkin.actor.{ ZipkinActorSupervisor, SpanSubmitter }
+import kamon.zipkin.submitter.TracingExtension
 
 object Zipkin extends ExtensionId[ZipkinExtension] with ExtensionIdProvider {
   override def lookup(): ExtensionId[_ <: Extension] = Zipkin

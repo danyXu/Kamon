@@ -1,17 +1,14 @@
 package kamon.zipkin.actor
 
 import akka.actor.{ ActorLogging, Actor }
-import com.github.levkhomich.akka.tracing.TracingExtensionImpl
 import kamon.trace.{ TraceSettings, HierarchyConfig }
 import kamon.util.NanoTimestamp
 import kamon.zipkin.ZipkinConfig
 import kamon.zipkin.models.{ Span, SpanBlock }
+import kamon.zipkin.submitter.TracingExtensionImpl
 
 import scala.collection.mutable
 
-/*
- * This actor submits spans to Zipkin using akka-tracing library @ https://github.com/levkhomich/akka-tracing
- */
 class SpanSubmitter(traceSettings: TraceSettings, tracingExt: Option[TracingExtensionImpl] = None) extends Actor with ActorLogging {
 
   def receive: Actor.Receive = {
