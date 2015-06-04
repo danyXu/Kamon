@@ -13,7 +13,7 @@ class EnableZipkinExplicitInstrumentationSpec extends BaseKamonSpec("enable-zipk
 
       Tracer.withContext(newContext("testKamonZipkin")) {
         val hello = new TestExplicitAnnotation()
-        hello.helloZipkinExplicit()
+        hello.helloZipkinExplicit("test")
         Tracer.currentContext.finish()
       }
 
@@ -21,11 +21,11 @@ class EnableZipkinExplicitInstrumentationSpec extends BaseKamonSpec("enable-zipk
       Kamon.tracer.unsubscribe(testActor)
 
       traceInfo.segments.size should be(1)
-      traceInfo.segments.find(_.name == "helloZipkinExplicit()") should be('defined)
+      traceInfo.segments.find(_.name == "helloZipkinExplicit(param: String)") should be('defined)
     }
 
   }
 
 }
 
-class TestExplicitAnnotation { def helloZipkinExplicit() = "hello explicit" }
+class TestExplicitAnnotation { def helloZipkinExplicit(param: String) = "hello explicit" }

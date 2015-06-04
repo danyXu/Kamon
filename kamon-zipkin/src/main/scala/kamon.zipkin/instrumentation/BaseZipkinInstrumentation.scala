@@ -43,10 +43,10 @@ class BaseZipkinInstrumentation {
         child.addMetadata(HierarchyConfig.rootToken, rootToken)
         child.addMetadata(HierarchyConfig.parentToken, parentToken)
         child.addMetadata(HierarchyConfig.spanUniqueClass, pjp.getTarget.toString)
-        if (remote) child.addMetadata(ZipkinConfig.remote, "remote")
         child.addMetadata(ZipkinConfig.parentClass, parentClass)
         child.addMetadata(ZipkinConfig.spanClass, pjp.getTarget.getClass.getSimpleName)
         child.addMetadata(ZipkinConfig.spanType, msg.getClass.getSimpleName)
+        if (remote) child.addMetadata(ZipkinConfig.remote, "remote")
 
         // child.addMetadata(msg.getClass.getSimpleName, msg.toString)
 

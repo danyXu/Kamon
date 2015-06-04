@@ -11,7 +11,7 @@ import scala.collection.mutable
 
 class ZipkinActorSupervisor(spansSubmitter: ActorRef) extends Actor with ActorLogging {
 
-  val tokenActors = TrieMap.empty[String, ActorRef]
+  val tokenActors = mutable.Map.empty[String, ActorRef]
 
   def receive: Actor.Receive = {
     case trace: TraceInfo ⇒
@@ -36,7 +36,7 @@ class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) 
   import context._
 
   lazy val config = Kamon(Zipkin).config
-  val traceSpan = TrieMap.empty[String, Span]
+  val traceSpan = mutable.Map.empty[String, Span]
 
   override def preStart() =
     system.scheduler.scheduleOnce(if (!remote) config.scheduler else config.scheduler / 2, self, "end")

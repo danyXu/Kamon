@@ -13,7 +13,7 @@ class EnableZipkinInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instr
 
       Tracer.withContext(newContext("testKamonZipkin")) {
         val hello = new TestAnnotation()
-        hello.helloZipkin()
+        hello.helloZipkin("test")
         Tracer.currentContext.finish()
       }
 
@@ -21,7 +21,7 @@ class EnableZipkinInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instr
       Kamon.tracer.unsubscribe(testActor)
 
       traceInfo.segments.size should be(1)
-      traceInfo.segments.find(_.name == "helloZipkin()") should be('defined)
+      traceInfo.segments.find(_.name == "helloZipkin(param: String)") should be('defined)
     }
 
   }
@@ -29,4 +29,4 @@ class EnableZipkinInstrumentationSpec extends BaseKamonSpec("enable-zipkin-instr
 }
 
 @EnableZipkin
-class TestAnnotation { def helloZipkin() = "hello" }
+class TestAnnotation { def helloZipkin(param: String) = "hello" }

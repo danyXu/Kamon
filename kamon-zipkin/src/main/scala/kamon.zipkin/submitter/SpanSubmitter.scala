@@ -65,7 +65,6 @@ private[submitter] class SpanSubmitter(transport: TTransport) extends ActorSubsc
   // buffer watermarks
   private[this] val highWatermark = 2000
   private[this] val lowWatermark = 1000
-  private[this] var sentWatermark = 0
 
   private[this] val protocolFactory = new TBinaryProtocol.Factory()
   private[this] val thriftBuffer = new TReusableTransport()
@@ -104,7 +103,7 @@ private[submitter] class SpanSubmitter(transport: TTransport) extends ActorSubsc
   }
 
   private[this] def flush(): Unit = {
-    log.info(s"flushing ${logEntries.size} spans")
+    log.info(s"Flushing ${logEntries.size} spans")
     send()
     if (transport.isOpen) {
       transport.close()
@@ -112,7 +111,7 @@ private[submitter] class SpanSubmitter(transport: TTransport) extends ActorSubsc
   }
 
   private[this] def send(): Unit = {
-    sentWatermark = logEntries.size
+    val sentWatermark = logEntries.size
     if (sentWatermark > 0) {
       Try {
         if (!transport.isOpen) {
@@ -130,7 +129,6 @@ private[submitter] class SpanSubmitter(transport: TTransport) extends ActorSubsc
       } match {
         case Success(thrift.ResultCode.OK) ⇒
           logEntries.remove(0, sentWatermark)
-          sentWatermark = 0
         case _ ⇒
           log.warning(s"Zipkin collector unavailable. Failed to send $sentWatermark spans.")
       }

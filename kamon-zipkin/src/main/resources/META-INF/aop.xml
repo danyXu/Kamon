@@ -11,6 +11,7 @@
         <!-- exclude some actors -->
         <exclude within="akka.event..*" />
         <exclude within="kamon.zipkin.actor..*" />
+        <exclude within="kamon.zipkin.submitter..*" />
 
         <!--  exclude some commons packages -->
         <exclude within="org..*" />

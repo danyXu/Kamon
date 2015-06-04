@@ -3,7 +3,7 @@ package kamon.zipkin.instrumentation
 import kamon.trace.{ LevelOfDetail, Tracer }
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{ Aspect, Pointcut, Around }
-import org.aspectj.lang.reflect.MethodSignature
+import org.aspectj.lang.reflect.{ CodeSignature, MethodSignature }
 
 @Aspect
 abstract class EnableZipkinInstrumentation {
@@ -33,17 +33,16 @@ abstract class EnableZipkinInstrumentation {
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
   def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
     if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
-      /*
-      val args = pjp.getArgs.foldLeft(Map.empty[String, String]) {
-        case (map, element) if element == null => map + ("null" -> "null")
-        case (map, element)                    => map + (element.getClass.getSimpleName -> element.toString)
-      }
-      */
 
-      val args = pjp.getArgs.foldLeft(List.empty[String]) {
-        case (list, arg) if arg == null ⇒ list :+ "null"
-        case (list, arg)                ⇒ list :+ arg.getClass.getSimpleName
-      }
+      val args = pjp.getSignature.asInstanceOf[CodeSignature].getParameterNames
+        .zip(pjp.getArgs)
+        .map {
+          case (argName, argVal) if argVal == null ⇒
+            argName + ": null"
+          case (argName, argVal) ⇒
+            argName + ": " + argVal.getClass.getSimpleName
+        }
+
       val txt = new StringBuilder("- ") * Tracer.currentContext.segmentsCount + pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
 
       pjp.getSignature.asInstanceOf[MethodSignature].getReturnType.toString match {

@@ -12,14 +12,17 @@ import scala.collection.mutable
 class SpanSubmitter(traceSettings: TraceSettings, tracingExt: Option[TracingExtensionImpl] = None) extends Actor with ActorLogging {
 
   def receive: Actor.Receive = {
-    case spanBlock: SpanBlock if tracingExt.isEmpty ⇒
-      val spans = spanBlock.spans
-      if (spanBlock.remote || spans.exists { case (_, span) ⇒ traceSettings.sampler.shouldReport(span.getNanoDuration) })
-        sender() ! buildHierarchy(spans)
     case spanBlock: SpanBlock ⇒
       val spans = spanBlock.spans
-      if (spanBlock.remote || spans.exists { case (_, span) ⇒ traceSettings.sampler.shouldReport(span.getNanoDuration) })
-        tracingExt.get.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
+      if (spanBlock.remote || spans.exists { case (_, span) ⇒ traceSettings.sampler.shouldReport(span.getNanoDuration) }) {
+        tracingExt match {
+          case Some(tracing) ⇒
+            tracing.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
+          case None ⇒
+            sender() ! buildHierarchy(spans)
+        }
+      }
+
   }
 
   private def buildHierarchy(spans: mutable.Map[String, Span]): Map[String, Span] = {
