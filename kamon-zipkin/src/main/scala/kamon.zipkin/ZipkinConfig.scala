@@ -22,9 +22,10 @@ object ZipkinConfig {
 
 class ZipkinConfig(config: Config) {
   import scala.concurrent.duration._
-  val recordMinDuration = config.getInt("kamon.zipkin.record-min")
 
+  val recordMinDuration = config.getInt("kamon.zipkin.record-min")
   val scheduler = config.getInt("kamon.zipkin.submit-scheduler") millis
+  val recordParamsValue = config.getBoolean("kamon.zipkin.record-params")
 
   object service {
     val host = config.getString("app.host") match {

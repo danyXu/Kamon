@@ -1,12 +1,19 @@
 package kamon.zipkin.instrumentation
 
+import kamon.Kamon
 import kamon.trace.{ LevelOfDetail, Tracer }
+import kamon.util.SameThreadExecutionContext
+import kamon.zipkin.Zipkin
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{ Aspect, Pointcut, Around }
 import org.aspectj.lang.reflect.{ CodeSignature, MethodSignature }
 
+import scala.collection.mutable.ListBuffer
+
 @Aspect
 abstract class EnableZipkinInstrumentation {
+
+  var checkToString = false
 
   @Pointcut("execution(* *(..)) && !execution(* akka..*(..)) && !execution(* scala..*(..)) && within(@kamon.zipkin.instrumentation.EnableZipkin *)")
   def enableZipkinPointcut() = {}
@@ -32,28 +39,44 @@ abstract class EnableZipkinInstrumentation {
 
   @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
   def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
-    if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly) {
+    if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly && !checkToString) {
 
-      val args = pjp.getSignature.asInstanceOf[CodeSignature].getParameterNames
-        .zip(pjp.getArgs)
-        .map {
-          case (argName, argVal) if argVal == null ⇒
-            argName + ": null"
-          case (argName, argVal) ⇒
-            argName + ": " + argVal.getClass.getSimpleName
-        }
+      val currentContext = Tracer.currentContext
+      val recordParams = Kamon(Zipkin).config.recordParamsValue
 
-      val txt = new StringBuilder("- ") * Tracer.currentContext.segmentsCount + pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
+      val annotations = ListBuffer.empty[(String, String)]
+
+      val args = pjp.getSignature.asInstanceOf[CodeSignature].getParameterNames.zip(pjp.getArgs).map {
+        case (argName, argVal) if argVal == null ⇒
+          argName + ": null"
+        case (argName, argVal) ⇒
+          if (recordParams) {
+            val argNameRdm = argName + "[" + java.util.UUID.randomUUID.toString + "]"
+            checkToString = true
+            val arg = argVal.toString
+            annotations += ((argNameRdm, arg))
+            checkToString = false
+            argNameRdm
+          } else {
+            argName
+          } + ": " + argVal.getClass.getSimpleName
+      }
+
+      val txt = new StringBuilder("- ") * currentContext.segmentsCount + pjp.getSignature.getName + "(" + args.mkString(", ") + ")"
 
       pjp.getSignature.asInstanceOf[MethodSignature].getReturnType.toString match {
         case "interface scala.concurrent.Future" ⇒
-          Tracer.currentContext.withNewAsyncSegment(txt, "zipkin", "kamon") {
-            pjp.proceed().asInstanceOf[scala.concurrent.Future[Any]]
-          }
+          val segment = currentContext.startSegment(txt, "zipkin", "kamon")
+          val result = pjp.proceed().asInstanceOf[scala.concurrent.Future[Any]]
+          annotations.foreach { case (name, value) ⇒ segment.addMetadata(name, value) }
+          result.onComplete(_ ⇒ segment.finish())(SameThreadExecutionContext)
+          result
         case _ ⇒
-          Tracer.currentContext.withNewSegment(txt, "zipkin", "kamon") {
-            pjp.proceed()
-          }
+          val segment = currentContext.startSegment(txt, "zipkin", "kamon")
+          val result = pjp.proceed()
+          annotations.foreach { case (name, value) ⇒ segment.addMetadata(name, value) }
+          segment.finish()
+          result
       }
 
     } else pjp.proceed()
