@@ -39,12 +39,13 @@ class ZipkinActor(spansSubmitter: ActorRef, rootToken: String, remote: Boolean) 
   val traceSpan = mutable.Map.empty[String, Span]
 
   override def preStart() =
-    system.scheduler.scheduleOnce(if (!remote) config.scheduler else config.scheduler / 2, self, "end")
+    system.scheduler.scheduleOnce(config.scheduler, self, "end")
 
   def receive: Actor.Receive = {
     case trace: TraceInfo ⇒
       // Create span of this TraceInfo and add it to the TrieMap
       traceSpan.put(trace.token, traceInfoToSpans(trace))
+      system.scheduler.scheduleOnce(config.scheduler, self, "end")
 
     // Send spans to Zipkin
     case "end" ⇒
