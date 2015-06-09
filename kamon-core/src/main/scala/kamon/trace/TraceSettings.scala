@@ -32,15 +32,22 @@ object TraceSettings {
       case other          ⇒ sys.error(s"Unknown tracer level of detail [$other] present in the configuration file.")
     }
 
-    val sampler: Sampler =
+    val sampler: Sampler = {
       if (detailLevel == LevelOfDetail.MetricsOnly) NoSampling
-      else tracerConfig.getString("sampling") match {
-        case "all"       ⇒ SampleAll
-        case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
-        case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
-        case "threshold" ⇒ new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos))
-        case "clock"     ⇒ new ClockSampler(new NanoInterval(tracerConfig.getFiniteDuration("clock-sampler.pause").toNanos))
+      else {
+        val tracer = tracerConfig.getString("sampling") match {
+          case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
+          case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
+          case "threshold" ⇒ new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos))
+          case "clock"     ⇒ new ClockSampler(new NanoInterval(tracerConfig.getFiniteDuration("clock-sampler.pause").toNanos))
+          case _           ⇒ SampleAll
+        }
+        if (tracerConfig.getBoolean("combine-threshold"))
+          new CombineSamplers(tracer, new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)))
+        else
+          tracer
       }
+    }
 
     val token: String = tracerConfig.getString("token-name")
 

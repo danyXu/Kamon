@@ -87,3 +87,8 @@ class ClockSampler(pauseInNanoseconds: NanoInterval) extends Sampler {
   }
   def shouldReport(traceElapsedTime: NanoInterval): Boolean = true
 }
+
+class CombineSamplers(traceSampler: Sampler, reportSampler: Sampler) extends Sampler {
+  def shouldTrace: Boolean = traceSampler.shouldTrace
+  def shouldReport(traceElapsedTime: NanoInterval) = reportSampler.shouldReport(traceElapsedTime)
+}
