@@ -20,9 +20,14 @@ import kamon.util.ConfigTools.Syntax
 import com.typesafe.config.Config
 import kamon.util.NanoInterval
 
-case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: Sampler, token: String)
+import scala.collection.concurrent.TrieMap
+
+case class TraceSettings(levelOfDetail: LevelOfDetail, sampler: String ⇒ Sampler, token: String)
 
 object TraceSettings {
+
+  val samplers = TrieMap.empty[String, Sampler]
+
   def apply(config: Config): TraceSettings = {
     val tracerConfig = config.getConfig("kamon.trace")
 
@@ -32,25 +37,40 @@ object TraceSettings {
       case other          ⇒ sys.error(s"Unknown tracer level of detail [$other] present in the configuration file.")
     }
 
-    val sampler: Sampler = {
+    def sampler: Sampler = {
+      val tracer = tracerConfig.getString("sampling") match {
+        case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
+        case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
+        case "threshold" ⇒ new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos))
+        case "clock"     ⇒ new ClockSampler(new NanoInterval(tracerConfig.getFiniteDuration("clock-sampler.pause").toNanos))
+        case _           ⇒ SampleAll
+      }
+      if (tracerConfig.getBoolean("combine-threshold"))
+        new CombineSamplers(tracer, new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)))
+      else
+        tracer
+    }
+
+    val uniqueSampler = sampler
+
+    def getSampler(traceName: String): Sampler = {
       if (detailLevel == LevelOfDetail.MetricsOnly) NoSampling
       else {
-        val tracer = tracerConfig.getString("sampling") match {
-          case "random"    ⇒ new RandomSampler(tracerConfig.getInt("random-sampler.chance"))
-          case "ordered"   ⇒ new OrderedSampler(tracerConfig.getInt("ordered-sampler.sample-interval"))
-          case "threshold" ⇒ new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos))
-          case "clock"     ⇒ new ClockSampler(new NanoInterval(tracerConfig.getFiniteDuration("clock-sampler.pause").toNanos))
-          case _           ⇒ SampleAll
-        }
-        if (tracerConfig.getBoolean("combine-threshold"))
-          new CombineSamplers(tracer, new ThresholdSampler(new NanoInterval(tracerConfig.getFiniteDuration("threshold-sampler.minimum-elapsed-time").toNanos)))
-        else
-          tracer
+        if (tracerConfig.getBoolean("sampling-by-name")) {
+          samplers.get(traceName) match {
+            case Some(s) ⇒ s
+            case None ⇒
+              val s = sampler
+              samplers.put(traceName, s)
+              s
+          }
+        } else
+          uniqueSampler
       }
     }
 
     val token: String = tracerConfig.getString("token-name")
 
-    TraceSettings(detailLevel, sampler, token)
+    TraceSettings(detailLevel, getSampler, token)
   }
 }

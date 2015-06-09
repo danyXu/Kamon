@@ -32,6 +32,8 @@ class SpanSubmitterSpec extends BaseKamonSpec("zipkin-actor-spec") {
           |  trace {
           |    level-of-detail = simple-trace
           |    sampling = threshold
+          |    combine-threshold = false
+          |    sampling-by-name = false
           |    threshold-sampler {
           |      minimum-elapsed-time = 500 ms
           |    }

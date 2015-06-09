@@ -15,8 +15,14 @@ abstract class EnableZipkinInstrumentation {
 
   var checkToString = false
 
-  @Pointcut("execution(* *(..)) && !execution(* akka..*(..)) && !execution(* scala..*(..)) && within(@kamon.zipkin.instrumentation.EnableZipkin *)")
+  @Pointcut("!execution(* akka..*(..)) && !execution(* scala..*(..))")
+  def ignorePointcut() = {}
+
+  @Pointcut("within(@kamon.zipkin.instrumentation.EnableZipkin *)")
   def enableZipkinPointcut() = {}
+
+  @Pointcut("execution(* *(..)) && enableZipkinPointcut() && ignorePointcut()")
+  def recordZipkinPointcut() = {}
 
   /**
    * This pointcut can be overridden in the aop.xml using a concrete-aspect to enable zipkin record on
@@ -37,8 +43,15 @@ abstract class EnableZipkinInstrumentation {
   @Pointcut()
   def optionalZipkinPointcut() = {}
 
-  @Around(value = "enableZipkinPointcut() || optionalZipkinPointcut()")
-  def aroundMethodsEnabled(pjp: ProceedingJoinPoint): Any =
+  /**
+   * Same but to ignore something
+   *         <pointcut name="ignoreZipkinPointcut" expression="" />
+   */
+  @Pointcut()
+  def ignoreZipkinPointcut() = {}
+
+  @Around(value = "(recordZipkinPointcut() || optionalZipkinPointcut()) && !ignoreZipkinPointcut()")
+  def aroundBasicMethods(pjp: ProceedingJoinPoint): Any =
     if (Tracer.currentContext.nonEmpty && Tracer.currentContext.levelOfDetail != LevelOfDetail.MetricsOnly && !checkToString) {
 
       val currentContext = Tracer.currentContext

@@ -139,7 +139,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     _settings.levelOfDetail match {
       case LevelOfDetail.MetricsOnly ⇒
         newMetricsOnlyContext(traceToken)
-      case _ if (isLocal && !isChild && !_settings.sampler.shouldTrace) || (!isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1) ⇒
+      case _ if (isLocal && !isChild && !_settings.sampler(traceName).shouldTrace) || (!isLocal && traceToken.split(HierarchyConfig.tokenSeparator).length == 1) ⇒
         newMetricsOnlyContext(traceToken)
       case _ ⇒
         new TracingContext(traceName, traceToken, true, _settings.levelOfDetail, isLocal, startTimestamp, _logger, dispatchTracingContext(isLocal))
@@ -153,7 +153,7 @@ private[kamon] class TracerModuleImpl(metricsExtension: MetricsModule, config: C
     _subscriptions.tell(TraceSubscriptions.Unsubscribe(subscriber))
 
   private[kamon] def dispatchTracingContext(isLocal: Boolean = true)(trace: TracingContext): Unit =
-    if (!isLocal || trace.metadata.contains(HierarchyConfig.parentToken) || _settings.sampler.shouldReport(trace.elapsedTime)) {
+    if (!isLocal || trace.metadata.contains(HierarchyConfig.parentToken) || _settings.sampler(trace.name).shouldReport(trace.elapsedTime)) {
       if (trace.shouldIncubate) _incubator.tell(trace)
       else _subscriptions.tell(trace.generateTraceInfo)
     }

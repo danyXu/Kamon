@@ -14,7 +14,7 @@ class SpanSubmitter(traceSettings: TraceSettings, tracingExt: Option[TracingExte
   def receive: Actor.Receive = {
     case spanBlock: SpanBlock ⇒
       val spans = spanBlock.spans
-      if (spanBlock.remote || spans.exists { case (_, span) ⇒ traceSettings.sampler.shouldReport(span.getNanoDuration) }) {
+      if (spanBlock.remote || spans.exists { case (_, span) ⇒ traceSettings.sampler(span.name).shouldReport(span.getNanoDuration) }) {
         tracingExt match {
           case Some(tracing) ⇒
             tracing.submitSpans(buildHierarchy(spans).map(_._2.simpleSpan))
